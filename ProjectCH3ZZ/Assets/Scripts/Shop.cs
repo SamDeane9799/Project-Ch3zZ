@@ -6,6 +6,7 @@ using UnityEngine.UI;
 public class Shop : MonoBehaviour
 {
     // Start is called before the first frame update
+    public Player player;
     public List<ShopItem> shopItems;
     private List<ShopItem> itemsInShop = new List<ShopItem>();
     private Camera mainCamera;
@@ -104,7 +105,7 @@ public class Shop : MonoBehaviour
         ShopItem itemToPurchase = UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<ShopItem>();
         int costOfItem = itemToPurchase.cost;
         //Check if player has room on bench
-        if (costOfItem <= playerCurrency)
+        if (costOfItem <= playerCurrency && player.AddToBench(itemToPurchase.characterPrefab))
         {
             playerCurrency -= costOfItem;
             itemsInShop.Remove(itemToPurchase);

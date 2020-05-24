@@ -5,5 +5,5 @@ using UnityEngine;
 public class ShopItem : MonoBehaviour
 {
     public int cost;
-    //public Character myCharacter
+    public GameObject characterPrefab;
 }

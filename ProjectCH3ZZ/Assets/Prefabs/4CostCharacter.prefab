@@ -209,3 +209,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cost: 4
+  characterPrefab: {fileID: 3466832256440898242, guid: 8a3127c65c8e5cd41b6dc770c46925b1,
+    type: 3}

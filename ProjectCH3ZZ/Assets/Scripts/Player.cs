@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
+    public GridSpace gridPrefab;
     public short level; //The player's current level, equivalent to the amount of units they can have
     public short gold; //The amount of gold a player currently has
 
@@ -12,7 +13,16 @@ public class Player : MonoBehaviour
     public CHARACTER_MODIFIER[] current_Mods;
     PLAYER_MODIFIER player_Mod;
     public List<GameObject> field_Units;
-    public List<GameObject> bench_Units;
+    private List<GameObject> bench_Units;
+
+    private GridSpace[,] grid;
+    private GridSpace[] bench;
+    private List<GridSpace> occupied_Space;
+
+    //Variables for moving various units around
+    private GameObject unit_ToMove;
+    private GridSpace previous_Space;
+    private bool dragging_Unit;
 
     // Start is called before the first frame update
     void Start()
@@ -20,6 +30,105 @@ public class Player : MonoBehaviour
         field_Units = new List<GameObject>();
         bench_Units = new List<GameObject>();
         current_Mods = new CHARACTER_MODIFIER[19]; //Number of possible mods
+
+        grid = new GridSpace[8, 4];
+        bench = new GridSpace[8];
+        occupied_Space = new List<GridSpace>();
+
+        for (short i = 0; i < 4; i++)
+        {
+            for (short j = 0; j < 8; j++)
+            {
+                grid[j, i] = Instantiate<GridSpace>(gridPrefab, new Vector3(j - 3.5f, 5, i - 5f), Quaternion.identity);
+            }
+        }
+        for (short i = 0; i < 8; i++)
+        {
+            bench[i] = Instantiate<GridSpace>(gridPrefab, new Vector3(i - 3.5f, 5, -6.5f), Quaternion.identity);
+        }
+    }
+
+    void Update()
+    {
+        if (dragging_Unit)
+        {
+            RaycastHit hit;
+            LayerMask mask = 1 << 8;
+            Ray direction = Camera.main.ScreenPointToRay(Input.mousePosition);
+            Physics.Raycast(direction, out hit, 1000, mask);
+            unit_ToMove.transform.position = hit.point;
+            if (Input.GetMouseButtonDown(0))
+            {
+                mask = 1 << 10;
+                if (Physics.Raycast(direction, out hit, 1000, mask))
+                {
+                    GridSpace new_Spot = hit.transform.gameObject.GetComponent<GridSpace>();
+                    if (new_Spot.unit == null)
+                    {
+                        new_Spot.AddCharacter(unit_ToMove);
+                        occupied_Space.Add(new_Spot);
+                        previous_Space.RemoveCharacter();
+                        occupied_Space.Remove(previous_Space);
+                        unit_ToMove = null;
+                        previous_Space = null;
+                        dragging_Unit = false;
+                    }
+                    else
+                    {
+                        GameObject previous_Unit = unit_ToMove;
+                        unit_ToMove = new_Spot.unit;
+                        new_Spot.AddCharacter(previous_Unit);
+                        previous_Space.unit = unit_ToMove;
+                    }
+                }
+                else
+                {
+                    previous_Space.ResetUnitPosition();
+                    unit_ToMove = null;
+                    previous_Space = null;
+                    dragging_Unit = false;
+                }
+            }
+        }
+
+        //actually dont lmao IM ZOE BTW
+        else if (Input.GetMouseButtonDown(0))
+        {
+            RaycastHit hit;
+            LayerMask mask = 1 << 9;
+            Ray direction = Camera.main.ScreenPointToRay(Input.mousePosition);
+            bool clicked = Physics.Raycast(direction, out hit, 1000, mask);
+            if (clicked)
+            {
+                Debug.Log("IM ZOE");
+                for (short i = 0; i < occupied_Space.Count; i++)
+                {
+                    if (occupied_Space[i].transform.position == hit.transform.position)
+                    {
+                        dragging_Unit = true;
+                        unit_ToMove = occupied_Space[i].unit;
+                        previous_Space = occupied_Space[i];
+                    }
+                }
+            }
+        }
+    }
+
+    //Adding a unit to the bench from the shop
+    public bool AddToBench(GameObject characterPrefab)
+    {
+        for (short i = 0; i < bench.Length; i++)
+        {
+            //Debug.Log(bench[i].unit);
+            if (bench[i].unit == null)
+            {
+                GameObject character = Instantiate(characterPrefab, Vector3.zero, Quaternion.identity);
+                bench[i].AddCharacter(character);
+                occupied_Space.Add(bench[i]);
+                return true;
+            }
+        }
+        return false;
     }
 
     //When a unit is moved, evaluate the buffs on the current board and

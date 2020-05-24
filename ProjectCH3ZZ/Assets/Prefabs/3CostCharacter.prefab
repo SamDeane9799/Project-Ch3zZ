@@ -132,6 +132,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cost: 3
+  characterPrefab: {fileID: 4232916146024786574, guid: ff567ac769bc92947b3ed1245be294c2,
+    type: 3}
 --- !u!1 &4898768024344783313
 GameObject:
   m_ObjectHideFlags: 0
