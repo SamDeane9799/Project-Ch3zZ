@@ -1,8 +1,9 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
-public enum ORIGIN
+public enum ATTRIBUTES
 {
     BEAST,
     ELDRITCH,
@@ -13,11 +14,7 @@ public enum ORIGIN
     VAMPIRE,
     WIGHT,
     WOODLAND,
-    WYRM
-}
-
-public enum CLASS
-{
+    WYRM,
     BLIGHTCRAFTER,
     BULWARK,
     FANATIC,
@@ -43,6 +40,7 @@ public abstract class Character : MonoBehaviour
     public short attack_Damage; //Damage dealt per auto attack
     public short spell_Power; //Amplification of the effect of ultimates
     public float attack_Speed; //How fast a character attacks
+    public short maxHealth;
     public short health; //Amount of health a character has
     public short armor; //Resistance to physical damage
     public short magic_Resistance; //Resistance to magic damage
@@ -50,16 +48,23 @@ public abstract class Character : MonoBehaviour
     #endregion
 
     public float attack_Timer = 0.0f;
-    public List<ORIGIN> origins;
-    public List<CLASS> classes;
+    protected Slider healthBar;
+    protected Slider manaBar;
+    public List<ATTRIBUTES> attributes;
 
     public virtual void Start()
     {
-        origins = new List<ORIGIN>();
-        classes = new List<CLASS>();
+        attributes = new List<ATTRIBUTES>();
+        healthBar = GetComponentInChildren<Canvas>().transform.GetChild(0).GetComponent<Slider>();
+        manaBar = GetComponentInChildren<Canvas>().transform.GetChild(1).GetComponent<Slider>();
+/*        manaBar.value = 0;
+        manaBar.maxValue = 100;
+        healthBar.maxValue = 100;
+        healthBar.value = 100;*/
     }
 
-    private void SetStats(short gold, short _tier, short _level, short _mana, short baseMana, short AD, short SP, float AS, short _health, short AR, short MR, short _range)
+
+    protected void SetStats(short gold, short _tier, short _level, short _mana, short baseMana, short AD, short SP, float AS, short _health, short AR, short MR, short _range)
     {
         gold_Cost = gold;
         tier = _tier;
@@ -70,9 +75,14 @@ public abstract class Character : MonoBehaviour
         spell_Power = SP;
         attack_Speed = AS;
         health = _health;
+        maxHealth = _health;
         armor = AR;
         magic_Resistance = MR;
         range = _range;
+        healthBar.maxValue = maxHealth;
+        healthBar.value = health;
+        manaBar.value = baseMana;
+        manaBar.maxValue = mana;
     }
 
     //Method to increment the level of this particular unit
@@ -102,4 +112,11 @@ public abstract class Character : MonoBehaviour
 
     //Ultimate move of a character that is unique to them
     public abstract void Ultimate(); 
+
+    public void TakeDamage()
+    {
+        health -= 5;
+        healthBar.value -= 5;
+        manaBar.value += 5;
+    }
 }

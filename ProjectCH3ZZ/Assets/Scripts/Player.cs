@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using System.Linq;
 
 public class Player : MonoBehaviour
 {
@@ -8,8 +10,8 @@ public class Player : MonoBehaviour
     public short level; //The player's current level, equivalent to the amount of units they can have
     public short gold; //The amount of gold a player currently has
 
-    private Dictionary<ORIGIN, short> p_Origins;
-    private Dictionary<CLASS, short> p_Classes;
+    private Dictionary<ATTRIBUTES, short> p_Attributes;
+    private Text synergiesText;
     public CHARACTER_MODIFIER[] current_Mods;
     PLAYER_MODIFIER player_Mod;
     public List<GameObject> field_Units;
@@ -27,8 +29,8 @@ public class Player : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        p_Origins = new Dictionary<ORIGIN, short>();
-        p_Classes = new Dictionary<CLASS, short>();
+        p_Attributes = new Dictionary<ATTRIBUTES, short>();
+        synergiesText = GameObject.Find("synergiesText").GetComponent<Text>();
         field_Units = new List<GameObject>();
         bench_Units = new List<GameObject>();
         current_Mods = new CHARACTER_MODIFIER[19]; //Number of possible mods
@@ -87,12 +89,12 @@ public class Player : MonoBehaviour
                         GameObject previous_Unit = unit_ToMove;
                         unit_ToMove = new_Spot.unit;
 
-                        if (previous_Space.transform.position.z >= -6.5f && new_Spot.transform.position.z < -6.5f)
+                        if (previous_Space.transform.position.z <= -6.5f && new_Spot.transform.position.z > -6.5f)
                         {
                             FieldToBench(unit_ToMove);
                             BenchToField(previous_Unit);
                         }
-                        else if (previous_Space.transform.position.z < -6.5f && new_Spot.transform.position.z >= -6.5f)
+                        else if (previous_Space.transform.position.z > -6.5f && new_Spot.transform.position.z <= -6.5f)
                         {
                             BenchToField(unit_ToMove);
                             FieldToBench(previous_Unit);
@@ -166,30 +168,23 @@ public class Player : MonoBehaviour
     //change what the player has accordingly
     private void BenchToField(GameObject unit)
     {
-        Character u_Char = unit.GetComponent<Character>();
         bench_Units.Remove(unit);
         field_Units.Add(unit);
-        foreach (ORIGIN o in u_Char.origins)
+        foreach (GameObject c in field_Units)
         {
-            if (p_Origins.ContainsKey(o)) p_Origins[o]++;
-            else p_Origins.Add(o, 1);
-            CheckOrigin(o);
+            if (unit.name == c.name && c != unit)
+            {
+                return;
+            }
         }
-        foreach (CLASS c in u_Char.classes)
+        Character u_Char = unit.GetComponent<Character>();
+        foreach (ATTRIBUTES o in u_Char.attributes)
         {
-            if (p_Classes.ContainsKey(c)) p_Classes[c]++;
-            else p_Classes.Add(c, 1);
-            CheckClass(c);
+            if (p_Attributes.ContainsKey(o)) p_Attributes[o]++;
+            else p_Attributes.Add(o, 1);
+            CheckAttributes(o);
         }
-        
-        //foreach (KeyValuePair<ORIGIN, short> o in p_Origins)
-        //{
-        //    Debug.Log(o.Key + " | " + o.Value);
-        //}
-        //foreach(KeyValuePair<CLASS, short> o in p_Classes)
-        //{
-        //    Debug.Log(o.Key + " | " + o.Value);
-        //}
+        SetText();
         //foreach (CHARACTER_MODIFIER mod in current_Mods)
         //{
         //    if (mod != CHARACTER_MODIFIER.NULL)
@@ -199,30 +194,23 @@ public class Player : MonoBehaviour
 
     private void FieldToBench(GameObject unit)
     {
-        Character u_Char = unit.GetComponent<Character>();
         field_Units.Remove(unit);
         bench_Units.Add(unit);
-        foreach (ORIGIN o in u_Char.origins)
+        foreach (GameObject c in field_Units)
         {
-            if (p_Origins.ContainsKey(o)) p_Origins[o]--;
-            CheckOrigin(o);
-            if (p_Origins[o] == 0) p_Origins.Remove(o);
+            if (unit.name == c.name && unit != c)
+            {
+                return;
+            }
         }
-        foreach (CLASS c in u_Char.classes)
+        Character u_Char = unit.GetComponent<Character>();
+        foreach (ATTRIBUTES o in u_Char.attributes)
         {
-            if (p_Classes.ContainsKey(c)) p_Classes[c]--;
-            CheckClass(c);
-            if (p_Classes[c] == 0) p_Classes.Remove(c);
+            if (p_Attributes.ContainsKey(o)) p_Attributes[o]--;
+            CheckAttributes(o);
+            if (p_Attributes[o] == 0) p_Attributes.Remove(o);
         }
-
-        //foreach (KeyValuePair<ORIGIN, short> o in p_Origins)
-        //{
-        //    Debug.Log(o.Key + " | " + o.Value);
-        //}
-        //foreach (KeyValuePair<CLASS, short> o in p_Classes)
-        //{
-        //    Debug.Log(o.Key + " | " + o.Value);
-        //}
+        SetText();
         //foreach (CHARACTER_MODIFIER mod in current_Mods)
         //{
         //    if (mod != CHARACTER_MODIFIER.NULL)
@@ -231,21 +219,21 @@ public class Player : MonoBehaviour
     }
 
     //Helper method to add any new modifiers to the list
-    private void CheckOrigin(ORIGIN o)
+    private void CheckAttributes(ATTRIBUTES o)
     {
         //Determine what buffs need to be added
         switch (o)
         {
-            case ORIGIN.BEAST:
-                if (p_Origins[o] >= 6)
+            case ATTRIBUTES.BEAST:
+                if (p_Attributes[o] >= 6)
                 {
                     current_Mods[11] = CHARACTER_MODIFIER.BEAST_3;
                 }
-                else if (p_Origins[o] >= 4)
+                else if (p_Attributes[o] >= 4)
                 {
                     current_Mods[11] = CHARACTER_MODIFIER.BEAST_2;
                 }
-                else if (p_Origins[o] >= 2)
+                else if (p_Attributes[o] >= 2)
                 {
                     current_Mods[11] = CHARACTER_MODIFIER.BEAST_1;
                 }
@@ -254,12 +242,12 @@ public class Player : MonoBehaviour
                     current_Mods[11] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case ORIGIN.ELDRITCH:
-                if (p_Origins[o] >= 4)
+            case ATTRIBUTES.ELDRITCH:
+                if (p_Attributes[o] >= 4)
                 {
                     current_Mods[12] = CHARACTER_MODIFIER.ELDRITCH_2;
                 }
-                else if (p_Origins[o] >= 2)
+                else if (p_Attributes[o] >= 2)
                 {
                     current_Mods[12] = CHARACTER_MODIFIER.ELDRITCH_1;
                 }
@@ -268,12 +256,12 @@ public class Player : MonoBehaviour
                     current_Mods[12] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case ORIGIN.FELWALKER:
-                if (p_Origins[o] >= 6)
+            case ATTRIBUTES.FELWALKER:
+                if (p_Attributes[o] >= 6)
                 {
                     current_Mods[13] = CHARACTER_MODIFIER.FELWALKER_2;
                 }
-                else if (p_Origins[o] >= 3)
+                else if (p_Attributes[o] >= 3)
                 {
                     current_Mods[13] = CHARACTER_MODIFIER.FELWALKER_1;
                 }
@@ -282,12 +270,12 @@ public class Player : MonoBehaviour
                     current_Mods[13] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case ORIGIN.HUMAN:
-                if (p_Origins[o] >= 4)
+            case ATTRIBUTES.HUMAN:
+                if (p_Attributes[o] >= 4)
                 {
                     player_Mod = PLAYER_MODIFIER.HUMAN_2;
                 }
-                else if (p_Origins[o] >= 2)
+                else if (p_Attributes[o] >= 2)
                 {
                     player_Mod = PLAYER_MODIFIER.HUMAN_1;
                 }
@@ -296,8 +284,8 @@ public class Player : MonoBehaviour
                     player_Mod = PLAYER_MODIFIER.NULL;
                 }
                 break;
-            case ORIGIN.INSECTOID:
-                if (p_Origins[o] >= 4)
+            case ATTRIBUTES.INSECTOID:
+                if (p_Attributes[o] >= 4)
                 {
                     current_Mods[14] = CHARACTER_MODIFIER.INSECTOID;
                 }
@@ -306,8 +294,8 @@ public class Player : MonoBehaviour
                     current_Mods[14] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case ORIGIN.NAUTICAL:
-                if (p_Origins[o] >= 3)
+            case ATTRIBUTES.NAUTICAL:
+                if (p_Attributes[o] >= 3)
                 {
                     current_Mods[15] = CHARACTER_MODIFIER.NAUTICAL;
                 }
@@ -316,12 +304,12 @@ public class Player : MonoBehaviour
                     current_Mods[15] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case ORIGIN.VAMPIRE:
-                if (p_Origins[o] >= 4)
+            case ATTRIBUTES.VAMPIRE:
+                if (p_Attributes[o] >= 4)
                 {
                     current_Mods[16] = CHARACTER_MODIFIER.VAMPIRE_2;
                 }
-                else if (p_Origins[o] >= 2)
+                else if (p_Attributes[o] >= 2)
                 {
                     current_Mods[16] = CHARACTER_MODIFIER.VAMPIRE_1;
                 }
@@ -330,16 +318,16 @@ public class Player : MonoBehaviour
                     current_Mods[16] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case ORIGIN.WIGHT:
-                if (p_Origins[o] >= 6)
+            case ATTRIBUTES.WIGHT:
+                if (p_Attributes[o] >= 6)
                 {
                     current_Mods[17] = CHARACTER_MODIFIER.WIGHT_3;
                 }
-                else if (p_Origins[o] >= 4)
+                else if (p_Attributes[o] >= 4)
                 {
                     current_Mods[17] = CHARACTER_MODIFIER.WIGHT_2;
                 }
-                else if (p_Origins[o] >= 2)
+                else if (p_Attributes[o] >= 2)
                 {
                     current_Mods[17] = CHARACTER_MODIFIER.WIGHT_1;
                 }
@@ -348,12 +336,12 @@ public class Player : MonoBehaviour
                     current_Mods[17] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case ORIGIN.WOODLAND:
-                if (p_Origins[o] >= 4)
+            case ATTRIBUTES.WOODLAND:
+                if (p_Attributes[o] >= 4)
                 {
                     current_Mods[18] = CHARACTER_MODIFIER.WOODLAND_2;
                 }
-                else if (p_Origins[o] >= 2)
+                else if (p_Attributes[o] >= 2)
                 {
                     current_Mods[18] = CHARACTER_MODIFIER.WOODLAND_1;
                 }
@@ -362,8 +350,8 @@ public class Player : MonoBehaviour
                     current_Mods[18] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case ORIGIN.WYRM:
-                if (p_Origins[o] >= 2)
+            case ATTRIBUTES.WYRM:
+                if (p_Attributes[o] >= 2)
                 {
                     current_Mods[19] = CHARACTER_MODIFIER.WYRM;
                 }
@@ -372,24 +360,16 @@ public class Player : MonoBehaviour
                     current_Mods[19] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-        }
-    }
-
-    //Helper method to add any modifiers based on class
-    private void CheckClass(CLASS c)
-    {
-        switch (c)
-        {
-            case CLASS.BLIGHTCRAFTER:
-                if (p_Classes[c] >= 6)
+            case ATTRIBUTES.BLIGHTCRAFTER:
+                if (p_Attributes[o] >= 6)
                 {
                     current_Mods[0] = CHARACTER_MODIFIER.BLIGHT_3;
                 }
-                else if (p_Classes[c] >= 4)
+                else if (p_Attributes[o] >= 4)
                 {
                     current_Mods[0] = CHARACTER_MODIFIER.BLIGHT_2;
                 }
-                else if (p_Classes[c] >= 2)
+                else if (p_Attributes[o] >= 2)
                 {
                     current_Mods[0] = CHARACTER_MODIFIER.BLIGHT_1;
                 }
@@ -398,12 +378,12 @@ public class Player : MonoBehaviour
                     current_Mods[0] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case CLASS.BOUNTYHUNTER:
-                if (p_Classes[c] >= 4)
+            case ATTRIBUTES.BOUNTYHUNTER:
+                if (p_Attributes[o] >= 4)
                 {
                     current_Mods[1] = CHARACTER_MODIFIER.BOUNTY_2;
                 }
-                else if (p_Classes[c] >= 2)
+                else if (p_Attributes[o] >= 2)
                 {
                     current_Mods[1] = CHARACTER_MODIFIER.BOUNTY_1;
                 }
@@ -412,8 +392,8 @@ public class Player : MonoBehaviour
                     current_Mods[1] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case CLASS.BULWARK:
-                if (p_Classes[c] >= 3)
+            case ATTRIBUTES.BULWARK:
+                if (p_Attributes[o] >= 3)
                 {
                     current_Mods[2] = CHARACTER_MODIFIER.BULWARK;
                 }
@@ -422,12 +402,12 @@ public class Player : MonoBehaviour
                     current_Mods[2] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case CLASS.FANATIC:
-                if (p_Classes[c] >= 4)
+            case ATTRIBUTES.FANATIC:
+                if (p_Attributes[o] >= 4)
                 {
                     current_Mods[3] = CHARACTER_MODIFIER.FANATIC_2;
                 }
-                else if (p_Classes[c] >= 2)
+                else if (p_Attributes[o] >= 2)
                 {
                     current_Mods[3] = CHARACTER_MODIFIER.FANATIC_1;
                 }
@@ -436,16 +416,16 @@ public class Player : MonoBehaviour
                     current_Mods[3] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case CLASS.PHALANX:
-                if (p_Classes[c] >= 6)
+            case ATTRIBUTES.PHALANX:
+                if (p_Attributes[o] >= 6)
                 {
                     current_Mods[4] = CHARACTER_MODIFIER.PHALANX_3;
                 }
-                else if (p_Classes[c] >= 4)
+                else if (p_Attributes[o] >= 4)
                 {
                     current_Mods[4] = CHARACTER_MODIFIER.PHALANX_2;
                 }
-                else if (p_Classes[c] >= 2)
+                else if (p_Attributes[o] >= 2)
                 {
                     current_Mods[4] = CHARACTER_MODIFIER.PHALANX_1;
                 }
@@ -454,16 +434,16 @@ public class Player : MonoBehaviour
                     current_Mods[4] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case CLASS.SHADOWHAND:
-                if (p_Classes[c] >= 6)
+            case ATTRIBUTES.SHADOWHAND:
+                if (p_Attributes[o] >= 6)
                 {
                     current_Mods[5] = CHARACTER_MODIFIER.SHADOWHAND_3;
                 }
-                else if (p_Classes[c] >= 4)
+                else if (p_Attributes[o] >= 4)
                 {
                     current_Mods[5] = CHARACTER_MODIFIER.SHADOWHAND_2;
                 }
-                else if (p_Classes[c] >= 2)
+                else if (p_Attributes[o] >= 2)
                 {
                     current_Mods[5] = CHARACTER_MODIFIER.SHADOWHAND_1;
                 }
@@ -472,8 +452,8 @@ public class Player : MonoBehaviour
                     current_Mods[5] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case CLASS.SILENCER:
-                if (p_Classes[c] >= 1)
+            case ATTRIBUTES.SILENCER:
+                if (p_Attributes[o] >= 1)
                 {
                     current_Mods[6] = CHARACTER_MODIFIER.SILENCER;
                 }
@@ -482,16 +462,16 @@ public class Player : MonoBehaviour
                     current_Mods[6] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case CLASS.SWARMLORD:
-                if (p_Classes[c] >= 6)
+            case ATTRIBUTES.SWARMLORD:
+                if (p_Attributes[o] >= 6)
                 {
                     current_Mods[7] = CHARACTER_MODIFIER.SWARMLORD_3;
                 }
-                else if (p_Classes[c] >= 4)
+                else if (p_Attributes[o] >= 4)
                 {
                     current_Mods[7] = CHARACTER_MODIFIER.SWARMLORD_2;
                 }
-                else if (p_Classes[c] >= 2)
+                else if (p_Attributes[o] >= 2)
                 {
                     current_Mods[7] = CHARACTER_MODIFIER.SWARMLORD_1;
                 }
@@ -500,12 +480,12 @@ public class Player : MonoBehaviour
                     current_Mods[7] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case CLASS.WARLOCK:
-                if (p_Classes[c] >= 4)
+            case ATTRIBUTES.WARLOCK:
+                if (p_Attributes[o] >= 4)
                 {
                     current_Mods[8] = CHARACTER_MODIFIER.WARLOCK_2;
                 }
-                else if (p_Classes[c] >= 2)
+                else if (p_Attributes[o] >= 2)
                 {
                     current_Mods[8] = CHARACTER_MODIFIER.WARLOCK_1;
                 }
@@ -514,12 +494,12 @@ public class Player : MonoBehaviour
                     current_Mods[8] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case CLASS.WITCHDOCTOR:
-                if (p_Classes[c] >= 4)
+            case ATTRIBUTES.WITCHDOCTOR:
+                if (p_Attributes[o] >= 4)
                 {
                     current_Mods[9] = CHARACTER_MODIFIER.WITCHDOCTOR_2;
                 }
-                else if (p_Classes[c] >= 2)
+                else if (p_Attributes[o] >= 2)
                 {
                     current_Mods[9] = CHARACTER_MODIFIER.WITCHDOCTOR_1;
                 }
@@ -528,8 +508,8 @@ public class Player : MonoBehaviour
                     current_Mods[9] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-            case CLASS.ZEALOT:
-                if (p_Classes[c] >= 4)
+            case ATTRIBUTES.ZEALOT:
+                if (p_Attributes[o] >= 4)
                 {
                     current_Mods[10] = CHARACTER_MODIFIER.ZEALOT;
                 }
@@ -538,6 +518,27 @@ public class Player : MonoBehaviour
                     current_Mods[10] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
+        
         }
+    }
+    private void SetText()
+    {
+        List<KeyValuePair<ATTRIBUTES, short>> sortedAttributes = p_Attributes.ToList();
+
+        sortedAttributes.Sort(
+            delegate (KeyValuePair<ATTRIBUTES, short> pair1,
+            KeyValuePair<ATTRIBUTES, short> pair2)
+            {
+                if (pair1.Value == pair2.Value)
+                {
+                    return pair2.Key.CompareTo(pair1.Key);
+                }
+                return pair2.Value.CompareTo(pair1.Value);
+            });
+        synergiesText.text = "";
+        foreach (KeyValuePair<ATTRIBUTES, short> o in sortedAttributes)
+        {
+            synergiesText.text += o.Key + " : " + o.Value + "\n";
+        }      
     }
 }

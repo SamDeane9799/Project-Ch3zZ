@@ -8,8 +8,8 @@ public class Foulmaw : Character
     public override void Start()
     {
         base.Start();
-        origins.Add(ORIGIN.BEAST);
-        classes.Add(CLASS.BLIGHTCRAFTER);
+        attributes.Add(global::ATTRIBUTES.BEAST);
+        attributes.Add(ATTRIBUTES.BLIGHTCRAFTER);
     }
 
     public override void Ultimate()

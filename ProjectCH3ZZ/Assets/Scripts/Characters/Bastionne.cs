@@ -8,8 +8,13 @@ public class Bastionne : Character
     public override void Start()
     {
         base.Start();
-        origins.Add(ORIGIN.HUMAN);
-        classes.Add(CLASS.BULWARK);
+        attributes.Add(global::ATTRIBUTES.HUMAN);
+        attributes.Add(ATTRIBUTES.BULWARK);
+        health = 100;
+        for(int i = 0; i < 3; i++)
+        {
+            TakeDamage();
+        }
     }
     
     public override void Ultimate()

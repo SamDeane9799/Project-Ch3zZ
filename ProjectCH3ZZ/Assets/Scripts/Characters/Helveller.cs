@@ -8,8 +8,8 @@ public class Helveller : Character
     public override void Start()
     {
         base.Start();
-        origins.Add(ORIGIN.FELWALKER);
-        classes.Add(CLASS.BLIGHTCRAFTER);
+        attributes.Add(global::ATTRIBUTES.FELWALKER);
+        attributes.Add(ATTRIBUTES.BLIGHTCRAFTER);
     }
 
     public override void Ultimate()
