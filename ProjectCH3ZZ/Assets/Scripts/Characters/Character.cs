@@ -53,10 +53,26 @@ public abstract class Character : MonoBehaviour
     public List<ORIGIN> origins;
     public List<CLASS> classes;
 
-    public void Start()
+    public virtual void Start()
     {
         origins = new List<ORIGIN>();
         classes = new List<CLASS>();
+    }
+
+    private void SetStats(short gold, short _tier, short _level, short _mana, short baseMana, short AD, short SP, float AS, short _health, short AR, short MR, short _range)
+    {
+        gold_Cost = gold;
+        tier = _tier;
+        level = _level;
+        mana = _mana;
+        base_Mana = baseMana;
+        attack_Damage = AD;
+        spell_Power = SP;
+        attack_Speed = AS;
+        health = _health;
+        armor = AR;
+        magic_Resistance = MR;
+        range = _range;
     }
 
     //Method to increment the level of this particular unit

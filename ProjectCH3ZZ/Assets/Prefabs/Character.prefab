@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 8052051571398816816}
   - component: {fileID: 8052051571398816819}
   - component: {fileID: 8052051571398816818}
+  - component: {fileID: 8024699785980711078}
   m_Layer: 9
   m_Name: Character
   m_TagString: Untagged
@@ -92,3 +93,30 @@ BoxCollider:
   serializedVersion: 2
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &8024699785980711078
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8052051571398816781}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32bfda37081c41a40b0efb1474f42a5c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gold_Cost: 0
+  tier: 0
+  level: 0
+  mana: 0
+  base_Mana: 0
+  attack_Damage: 0
+  spell_Power: 0
+  attack_Speed: 0
+  health: 0
+  armor: 0
+  magic_Resistance: 0
+  range: 0
+  attack_Timer: 0
+  origins: 
+  classes: 

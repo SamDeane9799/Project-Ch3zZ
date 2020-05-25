@@ -27,6 +27,8 @@ public class Player : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        p_Origins = new Dictionary<ORIGIN, short>();
+        p_Classes = new Dictionary<CLASS, short>();
         field_Units = new List<GameObject>();
         bench_Units = new List<GameObject>();
         current_Mods = new CHARACTER_MODIFIER[19]; //Number of possible mods
@@ -69,24 +71,48 @@ public class Player : MonoBehaviour
                         occupied_Space.Add(new_Spot);
                         previous_Space.RemoveCharacter();
                         occupied_Space.Remove(previous_Space);
-                        unit_ToMove = null;
-                        previous_Space = null;
-                        dragging_Unit = false;
+                        if (previous_Space.transform.position.z <= -6.5f && new_Spot.transform.position.z > -6.5f)
+                        {
+                            BenchToField(unit_ToMove);
+                        }
+                        else if (previous_Space.transform.position.z > -6.5f && new_Spot.transform.position.z <= -6.5f)
+                        {
+                            FieldToBench(unit_ToMove);
+                        }
+
+                        ResetHeldUnit();
                     }
-                    else
+                    else if (new_Spot != previous_Space)
                     {
                         GameObject previous_Unit = unit_ToMove;
                         unit_ToMove = new_Spot.unit;
+
+                        if (previous_Space.transform.position.z >= -6.5f && new_Spot.transform.position.z < -6.5f)
+                        {
+                            FieldToBench(unit_ToMove);
+                            BenchToField(previous_Unit);
+                        }
+                        else if (previous_Space.transform.position.z < -6.5f && new_Spot.transform.position.z >= -6.5f)
+                        {
+                            BenchToField(unit_ToMove);
+                            FieldToBench(previous_Unit);
+                        }
+
                         new_Spot.AddCharacter(previous_Unit);
-                        previous_Space.unit = unit_ToMove;
+                        previous_Space.AddCharacter(unit_ToMove);
+
+                        ResetHeldUnit();
+                    }
+                    else
+                    {
+                        previous_Space.ResetUnitPosition();
+                        ResetHeldUnit();
                     }
                 }
                 else
                 {
                     previous_Space.ResetUnitPosition();
-                    unit_ToMove = null;
-                    previous_Space = null;
-                    dragging_Unit = false;
+                    ResetHeldUnit();
                 }
             }
         }
@@ -100,7 +126,6 @@ public class Player : MonoBehaviour
             bool clicked = Physics.Raycast(direction, out hit, 1000, mask);
             if (clicked)
             {
-                Debug.Log("IM ZOE");
                 for (short i = 0; i < occupied_Space.Count; i++)
                 {
                     if (occupied_Space[i].transform.position == hit.transform.position)
@@ -119,7 +144,6 @@ public class Player : MonoBehaviour
     {
         for (short i = 0; i < bench.Length; i++)
         {
-            //Debug.Log(bench[i].unit);
             if (bench[i].unit == null)
             {
                 GameObject character = Instantiate(characterPrefab, Vector3.zero, Quaternion.identity);
@@ -131,43 +155,79 @@ public class Player : MonoBehaviour
         return false;
     }
 
+    private void ResetHeldUnit()
+    {
+        unit_ToMove = null;
+        previous_Space = null;
+        dragging_Unit = false;
+    }
+
     //When a unit is moved, evaluate the buffs on the current board and
     //change what the player has accordingly
-    public void UnitMoved(GameObject unit)
+    private void BenchToField(GameObject unit)
     {
         Character u_Char = unit.GetComponent<Character>();
-        if (bench_Units.Contains(unit))
+        bench_Units.Remove(unit);
+        field_Units.Add(unit);
+        foreach (ORIGIN o in u_Char.origins)
         {
-            bench_Units.Remove(unit);
-            field_Units.Add(unit);
-            foreach (ORIGIN o in u_Char.origins)
-            {
-                if (p_Origins.ContainsKey(o)) p_Origins[o]++;
-                else p_Origins.Add(o, 1);
-                CheckOrigin(o);
-            }
-            foreach (CLASS c in u_Char.classes)
-            {
-                if (p_Classes.ContainsKey(c)) p_Classes[c]++;
-                else p_Classes.Add(c, 1);
-                CheckClass(c);
-            }
+            if (p_Origins.ContainsKey(o)) p_Origins[o]++;
+            else p_Origins.Add(o, 1);
+            CheckOrigin(o);
         }
-        else
+        foreach (CLASS c in u_Char.classes)
         {
-            field_Units.Remove(unit);
-            bench_Units.Add(unit);
-            foreach (ORIGIN o in u_Char.origins)
-            {
-                if (p_Origins.ContainsKey(o)) p_Origins[o]--;
-                CheckOrigin(o);
-            }
-            foreach (CLASS c in u_Char.classes)
-            {
-                if (p_Classes.ContainsKey(c)) p_Classes[c]--;
-                CheckClass(c);
-            }
+            if (p_Classes.ContainsKey(c)) p_Classes[c]++;
+            else p_Classes.Add(c, 1);
+            CheckClass(c);
         }
+        
+        //foreach (KeyValuePair<ORIGIN, short> o in p_Origins)
+        //{
+        //    Debug.Log(o.Key + " | " + o.Value);
+        //}
+        //foreach(KeyValuePair<CLASS, short> o in p_Classes)
+        //{
+        //    Debug.Log(o.Key + " | " + o.Value);
+        //}
+        //foreach (CHARACTER_MODIFIER mod in current_Mods)
+        //{
+        //    if (mod != CHARACTER_MODIFIER.NULL)
+        //        Debug.Log(mod);
+        //}
+    }
+
+    private void FieldToBench(GameObject unit)
+    {
+        Character u_Char = unit.GetComponent<Character>();
+        field_Units.Remove(unit);
+        bench_Units.Add(unit);
+        foreach (ORIGIN o in u_Char.origins)
+        {
+            if (p_Origins.ContainsKey(o)) p_Origins[o]--;
+            CheckOrigin(o);
+            if (p_Origins[o] == 0) p_Origins.Remove(o);
+        }
+        foreach (CLASS c in u_Char.classes)
+        {
+            if (p_Classes.ContainsKey(c)) p_Classes[c]--;
+            CheckClass(c);
+            if (p_Classes[c] == 0) p_Classes.Remove(c);
+        }
+
+        //foreach (KeyValuePair<ORIGIN, short> o in p_Origins)
+        //{
+        //    Debug.Log(o.Key + " | " + o.Value);
+        //}
+        //foreach (KeyValuePair<CLASS, short> o in p_Classes)
+        //{
+        //    Debug.Log(o.Key + " | " + o.Value);
+        //}
+        //foreach (CHARACTER_MODIFIER mod in current_Mods)
+        //{
+        //    if (mod != CHARACTER_MODIFIER.NULL)
+        //        Debug.Log(mod);
+        //}
     }
 
     //Helper method to add any new modifiers to the list
