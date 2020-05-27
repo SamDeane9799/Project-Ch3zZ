@@ -45,7 +45,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gridPrefab: {fileID: -6412186355024461021, guid: 9fcbe77a96884654e8b35fb5e2fa262c,
     type: 3}
-  level: 0
+  level: 2
   gold: 0
+  xp: 0
   current_Mods: 
   field_Units: []
+  bench_Units: []
+  items: []
+  bench: []
+  occupied_Space: []

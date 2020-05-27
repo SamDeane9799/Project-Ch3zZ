@@ -3,28 +3,38 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Linq;
+using UnityEngine.EventSystems;
 
 public class Player : MonoBehaviour
 {
     public GridSpace gridPrefab;
     public short level; //The player's current level, equivalent to the amount of units they can have
     public short gold; //The amount of gold a player currently has
+    public short xp;
 
     private Dictionary<ATTRIBUTES, short> p_Attributes;
     private Text synergiesText;
+    private Canvas playerCanvas;
     public CHARACTER_MODIFIER[] current_Mods;
     PLAYER_MODIFIER player_Mod;
     public List<Character> field_Units;
     public List<Character> bench_Units;
+    public List<Item> items;
+    private Vector3 previousItemSpot;
+    private Shop playerShop;
 
     public GridSpace[,] grid;
     public GridSpace[] bench;
     public List<GridSpace> occupied_Space;
 
     //Variables for moving various units around
-    private Character unit_ToMove;
+    private GameObject unit_ToMove;
     private GridSpace previous_Space;
     private bool dragging_Unit;
+    private GraphicRaycaster m_Raycaster;
+    private PointerEventData m_PointerEventData;
+    private List<RaycastResult> ui_Results;
+    private EventSystem m_Eventsystem;
 
     // Start is called before the first frame update
     void Start()
@@ -33,6 +43,11 @@ public class Player : MonoBehaviour
         synergiesText = GameObject.Find("synergiesText").GetComponent<Text>();
         field_Units = new List<Character>();
         bench_Units = new List<Character>();
+        playerCanvas = GameObject.Find("ShopCanvas").GetComponent<Canvas>();
+        playerShop = playerCanvas.GetComponent<Shop>();
+        m_Raycaster = playerCanvas.GetComponent<GraphicRaycaster>();
+        ui_Results = new List<RaycastResult>();
+        m_Eventsystem = GetComponent<EventSystem>();
         current_Mods = new CHARACTER_MODIFIER[19]; //Number of possible mods
 
         grid = new GridSpace[8, 4];
@@ -54,6 +69,7 @@ public class Player : MonoBehaviour
 
     void Update()
     {
+
         if (dragging_Unit)
         {
             RaycastHit hit;
@@ -63,62 +79,106 @@ public class Player : MonoBehaviour
             unit_ToMove.transform.position = hit.point;
             if (Input.GetMouseButtonDown(0))
             {
-                mask = 1 << 10;
-                if (Physics.Raycast(direction, out hit, 1000, mask))
+                if (!unit_ToMove.GetComponent<Item>())
                 {
-                    GridSpace new_Spot = hit.transform.gameObject.GetComponent<GridSpace>();
-                    if (new_Spot.unit == null)
+                    Character character = unit_ToMove.GetComponent<Character>();
+                    mask = 1 << 10;
+                    m_PointerEventData = new PointerEventData(m_Eventsystem);
+                    m_PointerEventData.position = Input.mousePosition;
+                    ui_Results.Clear();
+                    m_Raycaster.Raycast(m_PointerEventData, ui_Results);
+                    if (ui_Results.Count != 0 && !unit_ToMove.GetComponent<Item>() && ui_Results[0].gameObject.name == "ShopBackground")
                     {
-                        new_Spot.AddCharacter(unit_ToMove);
-                        occupied_Space.Add(new_Spot);
-                        previous_Space.RemoveCharacter();
-                        occupied_Space.Remove(previous_Space);
-                        if (previous_Space.transform.position.z <= -6.5f && new_Spot.transform.position.z > -6.5f)
+                        //Adding units cost to players gold
+                        gold += unit_ToMove.GetComponent<Character>().gold_Cost;
+                        if (bench_Units.Contains(character))
                         {
-                            BenchToField(unit_ToMove);
+                            bench_Units.Remove(character);
                         }
-                        else if (previous_Space.transform.position.z > -6.5f && new_Spot.transform.position.z <= -6.5f)
+                        else
                         {
-                            FieldToBench(unit_ToMove);
+                            FieldToBench(character);
                         }
-
+                        Destroy(unit_ToMove.gameObject);
                         ResetHeldUnit();
                     }
-                    else if (new_Spot != previous_Space)
+                    else if (Physics.Raycast(direction, out hit, 1000, mask))
                     {
-                        Character previous_Unit = unit_ToMove;
-                        unit_ToMove = new_Spot.unit;
-
-                        if (previous_Space.transform.position.z <= -6.5f && new_Spot.transform.position.z > -6.5f)
+                        GridSpace new_Spot = hit.transform.gameObject.GetComponent<GridSpace>();
+                        if (new_Spot.unit == null)
                         {
-                            FieldToBench(unit_ToMove);
-                            BenchToField(previous_Unit);
+                            new_Spot.AddCharacter(character);
+                            occupied_Space.Add(new_Spot);
+                            previous_Space.RemoveCharacter();
+                            occupied_Space.Remove(previous_Space);
+                            if (previous_Space.transform.position.z <= -6.5f && new_Spot.transform.position.z > -6.5f)
+                            {
+                                BenchToField(character);
+                            }
+                            else if (previous_Space.transform.position.z > -6.5f && new_Spot.transform.position.z <= -6.5f)
+                            {
+                                FieldToBench(character);
+                            }
+
+                            ResetHeldUnit();
                         }
-                        else if (previous_Space.transform.position.z > -6.5f && new_Spot.transform.position.z <= -6.5f)
+                        else if (new_Spot != previous_Space)
                         {
-                            BenchToField(unit_ToMove);
-                            FieldToBench(previous_Unit);
+                            Character previous_Unit = character;
+                            character = new_Spot.unit;
+
+                            if (previous_Space.transform.position.z <= -6.5f && new_Spot.transform.position.z > -6.5f)
+                            {
+                                FieldToBench(character);
+                                BenchToField(previous_Unit);
+                            }
+                            else if (previous_Space.transform.position.z > -6.5f && new_Spot.transform.position.z <= -6.5f)
+                            {
+                                BenchToField(character);
+                                FieldToBench(previous_Unit);
+                            }
+
+                            new_Spot.AddCharacter(previous_Unit);
+                            previous_Space.AddCharacter(character);
+
+                            ResetHeldUnit();
                         }
-
-                        new_Spot.AddCharacter(previous_Unit);
-                        previous_Space.AddCharacter(unit_ToMove);
-
-                        ResetHeldUnit();
+                        else
+                        {
+                            previous_Space.ResetUnitPosition();
+                            ResetHeldUnit();
+                        }
                     }
+
                     else
                     {
-                        previous_Space.ResetUnitPosition();
-                        ResetHeldUnit();
+                            previous_Space.ResetUnitPosition();
+                            ResetHeldUnit();
                     }
                 }
                 else
                 {
-                    previous_Space.ResetUnitPosition();
-                    ResetHeldUnit();
+                    mask = 1 << 9;
+                    bool unitClicked = Physics.Raycast(direction, out hit, 1000, mask);
+                    if(unitClicked)
+                    {
+                        Character clickedChar = hit.transform.gameObject.GetComponent<Character>();
+                        //Add item to characters list if there is room
+                        RectTransform itemRectTransform = unit_ToMove.GetComponent<RectTransform>();
+                        unit_ToMove.transform.SetParent(clickedChar.transform.GetChild(0));
+                        itemRectTransform.localScale = new Vector3(.75f, .75f);
+                        itemRectTransform.anchoredPosition3D = new Vector3(Data.itemSpriteSideLength/2 - 5, -Data.itemSpriteSideLength + 5, 0);
+                        ResetHeldUnit();
+                    }
+                    else
+                    {
+                        unit_ToMove.transform.position = previousItemSpot;
+                        ResetHeldUnit();
+                    }
                 }
             }
         }
-
+        
         //actually dont lmao IM ZOE BTW
         else if (Input.GetMouseButtonDown(0))
         {
@@ -126,6 +186,13 @@ public class Player : MonoBehaviour
             LayerMask mask = 1 << 9;
             Ray direction = Camera.main.ScreenPointToRay(Input.mousePosition);
             bool clicked = Physics.Raycast(direction, out hit, 1000, mask);
+
+            m_PointerEventData = new PointerEventData(m_Eventsystem);
+            m_PointerEventData.position = Input.mousePosition;
+            ui_Results.Clear();
+            m_Raycaster.Raycast(m_PointerEventData, ui_Results);
+            GameObject objectReturned = ui_Results[0].gameObject;
+            
             if (clicked)
             {
                 for (short i = 0; i < occupied_Space.Count; i++)
@@ -133,9 +200,26 @@ public class Player : MonoBehaviour
                     if (occupied_Space[i].transform.position == hit.transform.position)
                     {
                         dragging_Unit = true;
-                        unit_ToMove = occupied_Space[i].unit;
+                        unit_ToMove = occupied_Space[i].unit.gameObject;
                         previous_Space = occupied_Space[i];
                     }
+                }
+            }
+            else if (ui_Results.Count != 0 && ui_Results[0].gameObject.GetComponent<Item>())
+            {
+                unit_ToMove = ui_Results[0].gameObject;
+                Item itemToMove = unit_ToMove.GetComponent<Item>();
+                if (!items.Contains(itemToMove))
+                {
+                    AddItem(itemToMove);
+                    playerShop.RemoveItemFromChoice(itemToMove);
+                    playerShop.ClearItems();
+                }
+                else
+                {
+                    unit_ToMove = itemToMove.gameObject;
+                    previousItemSpot = unit_ToMove.transform.position;
+                    dragging_Unit = true;
                 }
             }
         }
@@ -214,6 +298,19 @@ public class Player : MonoBehaviour
         //    if (mod != CHARACTER_MODIFIER.NULL)
         //        Debug.Log(mod);
         //}
+    }
+
+    private void AddItem(Item itemToAdd)
+    {
+        items.Add(itemToAdd);
+        RectTransform newItem = itemToAdd.GetComponent<RectTransform>();
+        newItem.SetParent(playerCanvas.transform.GetChild(4).transform);
+        for (int i = 0; i < items.Count; i++)
+        {
+            newItem.anchorMin = new Vector2(0, 1);
+            newItem.anchorMax = new Vector2(0, 1);
+            newItem.anchoredPosition3D = new Vector3((i % 3) * Data.itemSpriteSideLength + (i % 3 * 5), -(Data.itemSpriteSideLength + 5) * (items.Count / 4) - 25, 0);
+        }
     }
 
     //Helper method to add any new modifiers to the list

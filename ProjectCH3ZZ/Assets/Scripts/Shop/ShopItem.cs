@@ -4,6 +4,6 @@ using UnityEngine;
 
 public class ShopItem : MonoBehaviour
 {
-    public int cost;
+    public short cost;
     public Character characterPrefab;
 }
