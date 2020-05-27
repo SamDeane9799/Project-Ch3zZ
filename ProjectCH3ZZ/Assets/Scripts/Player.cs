@@ -98,6 +98,7 @@ public class Player : MonoBehaviour
                         else
                         {
                             FieldToBench(character);
+                            bench_Units.Remove(character);
                         }
                         Destroy(unit_ToMove.gameObject);
                         ResetHeldUnit();
