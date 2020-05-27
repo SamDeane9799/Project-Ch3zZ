@@ -574,7 +574,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 32bfda37081c41a40b0efb1474f42a5c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gold_Cost: 0
+  gold_Cost: 1
   tier: 0
   level: 0
   mana: 0
