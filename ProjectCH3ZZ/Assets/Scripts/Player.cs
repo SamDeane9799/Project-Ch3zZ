@@ -14,15 +14,15 @@ public class Player : MonoBehaviour
     private Text synergiesText;
     public CHARACTER_MODIFIER[] current_Mods;
     PLAYER_MODIFIER player_Mod;
-    public List<GameObject> field_Units;
-    private List<GameObject> bench_Units;
+    public List<Character> field_Units;
+    public List<Character> bench_Units;
 
-    private GridSpace[,] grid;
-    private GridSpace[] bench;
-    private List<GridSpace> occupied_Space;
+    public GridSpace[,] grid;
+    public GridSpace[] bench;
+    public List<GridSpace> occupied_Space;
 
     //Variables for moving various units around
-    private GameObject unit_ToMove;
+    private Character unit_ToMove;
     private GridSpace previous_Space;
     private bool dragging_Unit;
 
@@ -31,8 +31,8 @@ public class Player : MonoBehaviour
     {
         p_Attributes = new Dictionary<ATTRIBUTES, short>();
         synergiesText = GameObject.Find("synergiesText").GetComponent<Text>();
-        field_Units = new List<GameObject>();
-        bench_Units = new List<GameObject>();
+        field_Units = new List<Character>();
+        bench_Units = new List<Character>();
         current_Mods = new CHARACTER_MODIFIER[19]; //Number of possible mods
 
         grid = new GridSpace[8, 4];
@@ -86,7 +86,7 @@ public class Player : MonoBehaviour
                     }
                     else if (new_Spot != previous_Space)
                     {
-                        GameObject previous_Unit = unit_ToMove;
+                        Character previous_Unit = unit_ToMove;
                         unit_ToMove = new_Spot.unit;
 
                         if (previous_Space.transform.position.z <= -6.5f && new_Spot.transform.position.z > -6.5f)
@@ -142,13 +142,13 @@ public class Player : MonoBehaviour
     }
 
     //Adding a unit to the bench from the shop
-    public bool AddToBench(GameObject characterPrefab)
+    public bool AddToBench(Character characterPrefab)
     {
         for (short i = 0; i < bench.Length; i++)
         {
             if (bench[i].unit == null)
             {
-                GameObject character = Instantiate(characterPrefab, Vector3.zero, Quaternion.identity);
+                Character character = Instantiate<Character>(characterPrefab, Vector3.zero, Quaternion.identity);
                 bench[i].AddCharacter(character);
                 occupied_Space.Add(bench[i]);
                 return true;
@@ -166,19 +166,18 @@ public class Player : MonoBehaviour
 
     //When a unit is moved, evaluate the buffs on the current board and
     //change what the player has accordingly
-    private void BenchToField(GameObject unit)
+    private void BenchToField(Character unit)
     {
         bench_Units.Remove(unit);
         field_Units.Add(unit);
-        foreach (GameObject c in field_Units)
+        foreach (Character c in field_Units)
         {
             if (unit.name == c.name && c != unit)
             {
                 return;
             }
         }
-        Character u_Char = unit.GetComponent<Character>();
-        foreach (ATTRIBUTES o in u_Char.attributes)
+        foreach (ATTRIBUTES o in unit.attributes)
         {
             if (p_Attributes.ContainsKey(o)) p_Attributes[o]++;
             else p_Attributes.Add(o, 1);
@@ -192,19 +191,18 @@ public class Player : MonoBehaviour
         //}
     }
 
-    private void FieldToBench(GameObject unit)
+    private void FieldToBench(Character unit)
     {
         field_Units.Remove(unit);
         bench_Units.Add(unit);
-        foreach (GameObject c in field_Units)
+        foreach (Character c in field_Units)
         {
             if (unit.name == c.name && unit != c)
             {
                 return;
             }
         }
-        Character u_Char = unit.GetComponent<Character>();
-        foreach (ATTRIBUTES o in u_Char.attributes)
+        foreach (ATTRIBUTES o in unit.attributes)
         {
             if (p_Attributes.ContainsKey(o)) p_Attributes[o]--;
             CheckAttributes(o);
@@ -521,6 +519,7 @@ public class Player : MonoBehaviour
         
         }
     }
+
     private void SetText()
     {
         List<KeyValuePair<ATTRIBUTES, short>> sortedAttributes = p_Attributes.ToList();
