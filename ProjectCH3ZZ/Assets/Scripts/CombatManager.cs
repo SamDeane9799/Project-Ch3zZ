@@ -71,17 +71,19 @@ public class CombatManager : MonoBehaviour
             {
                 if (!c.Moving())
                 {
-                    if (c.target == null) c.target_Position = FindTarget(c.grid_Position, c.target.grid_Position);
-                    if (c.target != null)
+                    if (c.target_Position.x < 0) c.target_Position = FindTarget(c, c.target.grid_Position, c.range);
+                    if (c.target_Position.x > 0)
                     {
                         GridSpace next = FindNextSpace(c.grid_Position, c.target.grid_Position);
                         if (next == null)
                         {
-                            c.target = null;
+                            c.ResetTargetPosition();
                         }
                         else
                         {
                             c.next_Space = next;
+                            c.visited_Spaces.Enqueue(next);
+                            next.AddCharacter(c);
                         }
                     }
                 }
@@ -89,9 +91,117 @@ public class CombatManager : MonoBehaviour
         }
     }
 
-    private Vector2 FindTarget(Vector2 occupied, Vector2 target)
+    private Vector2 FindTarget(Character character, Vector2 target, short range)
     {
-        return grid[0, 0].grid_Position;
+        int o_X = (int)character.grid_Position.x;
+        int o_Y = (int)character.grid_Position.y;
+        int x = (int)(target.x - character.grid_Position.x);
+        int y = (int)(target.y - character.grid_Position.y);
+        if (x < 0) x += range;
+        else if (x > 0) x -= range;
+        if (y < 0) y += range;
+        else if (y > 0) y -= range;
+
+        if (grid[x + o_X, y + o_Y].combat_Unit != null)
+        {
+            GridPosition position_One = null;
+            GridPosition position_Two = null;
+            //Test in the y direction
+            if (IsOptimal(target, new Vector2(o_X + x, o_Y + y - 1), range))
+            {
+                if (grid[o_X + x, o_Y + y - 1].combat_Unit == null)
+                {
+                    return grid[o_X + x, o_Y + y - 1].grid_Position;
+                }
+                position_One = new GridPosition(o_X + x, o_Y + y - 1, 0, 1);
+            }
+            if (IsOptimal(target, new Vector2(o_X + x, o_Y + y + 1), range))
+            {
+                if (grid[o_X + x, o_Y + y + 1].combat_Unit == null)
+                {
+                    return grid[o_X + x, o_Y + y + 1].grid_Position;
+                }
+                if (position_One.x > 0)
+                    position_One = new GridPosition(o_X + x, o_Y + y + 1, 0, -1);
+                position_Two = new GridPosition(o_X + x, o_Y + y + 1, 0, -1);
+            }
+            //Test in the x direction
+            if (IsOptimal(target, new Vector2(o_X + x - 1, o_Y + y), range))
+            {
+                if (grid[o_X + x - 1, o_Y + y].combat_Unit == null)
+                {
+                    return grid[o_X + x - 1, o_Y + y].grid_Position;
+                }
+                if (position_One.x > 0)
+                    position_One = new GridPosition(o_X + x - 1, o_Y + y, 1, 0);
+                position_Two = new GridPosition(o_X + x - 1, o_Y + y, 1, 0);
+            }
+            if (IsOptimal(target, new Vector2(o_X + x + 1, o_Y + y), range))
+            {
+                if (grid[o_X + x + 1, o_Y + y].combat_Unit == null)
+                {
+                    return grid[o_X + x + 1, o_Y + y].grid_Position;
+                }
+                if (position_One.x > 0)
+                    position_One = new GridPosition(o_X + x + 1, o_Y + y, -1, 0);
+                position_Two = new GridPosition(o_X + x + 1, o_Y + y, -1, 0);
+            }
+
+            while (!position_One.IsEqual(position_Two))
+            {
+                Vector2 possible_Space = GetNextOptimalSpace(position_One, target, range);
+                if (possible_Space.x >= 0) return possible_Space;
+                possible_Space = GetNextOptimalSpace(position_Two, target, range);
+                if (possible_Space.x >= 0) return possible_Space;
+            }
+        }
+
+        return grid[x + o_X, y + o_Y].grid_Position;
+    }
+
+    //Target is the position of the enemy, desired is the 
+    //desired position of the character
+    private bool IsOptimal(Vector2 target, Vector2 desired, short range)
+    {
+        return Mathf.Abs(target.x - desired.x) <= range && Mathf.Abs(target.y - desired.y) <= range;
+    }
+
+    private Vector2 GetNextOptimalSpace(GridPosition pos, Vector2 target, short range)
+    {
+        if (IsOptimal(target, new Vector2(pos.x, pos.y - 1), range) && -1 != pos.direction_Y)
+        {
+            if (grid[pos.x, pos.y - 1].combat_Unit == null)
+            {
+                return grid[pos.x, pos.y - 1].grid_Position;
+            }
+            pos = new GridPosition(pos.x, pos.y - 1, 0, 1);
+        }
+        if (IsOptimal(target, new Vector2(pos.x, pos.y + 1), range) && 1 != pos.direction_Y)
+        {
+            if (grid[pos.x, pos.y + 1].combat_Unit == null)
+            {
+                return grid[pos.x, pos.y + 1].grid_Position;
+            }
+            pos = new GridPosition(pos.x, pos.y + 1, 0, -1);
+        }
+        //Test in the x direction
+        if (IsOptimal(target, new Vector2(pos.x - 1, pos.y), range) && -1 != pos.direction_X)
+        {
+            if (grid[pos.x - 1, pos.y].combat_Unit == null)
+            {
+                return grid[pos.x - 1, pos.y].grid_Position;
+            }
+            pos = new GridPosition(pos.x - 1, pos.y, 1, 0);
+        }
+        if (IsOptimal(target, new Vector2(pos.x + 1, pos.y), range) && 1 != pos.direction_X)
+        {
+            if (grid[pos.x + 1, pos.y].combat_Unit == null)
+            {
+                return grid[pos.x + 1, pos.y].grid_Position;
+            }
+            pos = new GridPosition(pos.x + 1, pos.y, -1, 0);
+        }
+        return new Vector2(-1, -1);
     }
 
     private GridSpace FindNextSpace(Vector2 occupied, Vector2 target)
@@ -139,7 +249,10 @@ public class CombatManager : MonoBehaviour
                     if (grid[x + 1, y].combat_Unit == null) x++;
                 }
             }
-            return null;
+            else
+            {
+                return null;
+            }
         }
 
         grid[o_X, o_Y].combat_Unit = null;

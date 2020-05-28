@@ -52,6 +52,7 @@ public abstract class Character : MonoBehaviour
     protected Slider healthBar;
     protected Slider manaBar;
     public Character target;
+    public Queue<GridSpace> visited_Spaces;
     public GridSpace next_Space;
     public Vector2 grid_Position;
     public Vector2 target_Position;
@@ -59,6 +60,7 @@ public abstract class Character : MonoBehaviour
 
     public virtual void Start()
     {
+        visited_Spaces = new Queue<GridSpace>();
         attributes = new List<ATTRIBUTES>();
         healthBar = GetComponentInChildren<Canvas>().transform.GetChild(0).GetComponent<Slider>();
         manaBar = GetComponentInChildren<Canvas>().transform.GetChild(1).GetComponent<Slider>();
@@ -144,11 +146,21 @@ public abstract class Character : MonoBehaviour
         }
         if (Vector3.Distance(transform.position, next_Space.transform.position) <= 0.1)
         {
-            next_Space.AddCombatCharacter(this);
             next_Space = null;
+            if (target.grid_Position.x - grid_Position.x <= range &&
+                target.grid_Position.y - grid_Position.y <= range)
+            {
+                ResetTargetPosition();
+                visited_Spaces.Clear();
+            }
             return false;
         }
         transform.position = Vector3.Lerp(transform.position, next_Space.transform.position, 1.0f);
         return true;
+    }
+
+    public void ResetTargetPosition()
+    {
+        target_Position = new Vector3(-1, -1);
     }
 }
