@@ -4,9 +4,11 @@ using UnityEngine;
 
 public class CombatManager : MonoBehaviour
 {
-    private Player main_Player;
-    private Player other_Player;
+    public Player main_Player;
+    public Player other_Player;
     private GridSpace[,] grid;
+
+    float combat_Timer;
 
     //Setup the grid for combat between the two players
     public void SetCombat(Player main, Player other)
@@ -35,13 +37,20 @@ public class CombatManager : MonoBehaviour
     void Start()
     {
         grid = new GridSpace[8, 8];
+        SetCombat(main_Player, other_Player);
     }
 
     // Update is called once per frame
     void Update()
     {
-        SimulateCombat(main_Player.field_Units, other_Player.field_Units);
-        SimulateCombat(other_Player.field_Units, main_Player.field_Units);
+        if (combat_Timer >= 5)
+        {
+            main_Player.in_Combat = true;
+            other_Player.in_Combat = true;
+            SimulateCombat(main_Player.field_Units, other_Player.field_Units);
+        }
+        combat_Timer += Time.deltaTime;
+        //SimulateCombat(other_Player.field_Units, main_Player.field_Units);
     }
 
     private void SimulateCombat(List<Character> fielded_Units, List<Character> enemy_Units)
@@ -51,7 +60,7 @@ public class CombatManager : MonoBehaviour
         {
             if (c.target == null)
             {
-                float shortestDistance = 0;
+                float shortestDistance = float.MaxValue;
                 foreach (Character e in enemy_Units)
                 {
                     float distance = Vector3.Distance(c.transform.position, e.transform.position);
@@ -62,101 +71,16 @@ public class CombatManager : MonoBehaviour
                     }
                 }
             }
-            if ((int)Vector2.Distance(c.grid_Position, c.grid_Position) <= c.range)
+            if (!c.Moving() && Vector2.Distance(c.grid_Position, c.target.grid_Position) > c.range)
+            {
+                FindTarget(c);
+            }
+            else
             {
                 c.CastUltimate();
                 c.Attack();
             }
-            else
-            {
-                if (!c.Moving())
-                {
-                    if (c.target_Position.x < 0) c.target_Position = FindTarget(c, c.target.grid_Position, c.range);
-                    if (c.target_Position.x > 0)
-                    {
-                        GridSpace next = FindNextSpace(c.grid_Position, c.target.grid_Position);
-                        if (next == null)
-                        {
-                            c.ResetTargetPosition();
-                        }
-                        else
-                        {
-                            c.next_Space = next;
-                            c.visited_Spaces.Enqueue(next);
-                            next.AddCharacter(c);
-                        }
-                    }
-                }
-            }
         }
-    }
-
-    private Vector2 FindTarget(Character character, Vector2 target, short range)
-    {
-        int o_X = (int)character.grid_Position.x;
-        int o_Y = (int)character.grid_Position.y;
-        int x = (int)(target.x - character.grid_Position.x);
-        int y = (int)(target.y - character.grid_Position.y);
-        if (x < 0) x += range;
-        else if (x > 0) x -= range;
-        if (y < 0) y += range;
-        else if (y > 0) y -= range;
-
-        if (grid[x + o_X, y + o_Y].combat_Unit != null)
-        {
-            GridPosition position_One = null;
-            GridPosition position_Two = null;
-            //Test in the y direction
-            if (IsOptimal(target, new Vector2(o_X + x, o_Y + y - 1), range))
-            {
-                if (grid[o_X + x, o_Y + y - 1].combat_Unit == null)
-                {
-                    return grid[o_X + x, o_Y + y - 1].grid_Position;
-                }
-                position_One = new GridPosition(o_X + x, o_Y + y - 1, 0, 1);
-            }
-            if (IsOptimal(target, new Vector2(o_X + x, o_Y + y + 1), range))
-            {
-                if (grid[o_X + x, o_Y + y + 1].combat_Unit == null)
-                {
-                    return grid[o_X + x, o_Y + y + 1].grid_Position;
-                }
-                if (position_One.x > 0)
-                    position_One = new GridPosition(o_X + x, o_Y + y + 1, 0, -1);
-                position_Two = new GridPosition(o_X + x, o_Y + y + 1, 0, -1);
-            }
-            //Test in the x direction
-            if (IsOptimal(target, new Vector2(o_X + x - 1, o_Y + y), range))
-            {
-                if (grid[o_X + x - 1, o_Y + y].combat_Unit == null)
-                {
-                    return grid[o_X + x - 1, o_Y + y].grid_Position;
-                }
-                if (position_One.x > 0)
-                    position_One = new GridPosition(o_X + x - 1, o_Y + y, 1, 0);
-                position_Two = new GridPosition(o_X + x - 1, o_Y + y, 1, 0);
-            }
-            if (IsOptimal(target, new Vector2(o_X + x + 1, o_Y + y), range))
-            {
-                if (grid[o_X + x + 1, o_Y + y].combat_Unit == null)
-                {
-                    return grid[o_X + x + 1, o_Y + y].grid_Position;
-                }
-                if (position_One.x > 0)
-                    position_One = new GridPosition(o_X + x + 1, o_Y + y, -1, 0);
-                position_Two = new GridPosition(o_X + x + 1, o_Y + y, -1, 0);
-            }
-
-            while (!position_One.IsEqual(position_Two))
-            {
-                Vector2 possible_Space = GetNextOptimalSpace(position_One, target, range);
-                if (possible_Space.x >= 0) return possible_Space;
-                possible_Space = GetNextOptimalSpace(position_Two, target, range);
-                if (possible_Space.x >= 0) return possible_Space;
-            }
-        }
-
-        return grid[x + o_X, y + o_Y].grid_Position;
     }
 
     //Target is the position of the enemy, desired is the 
@@ -166,96 +90,267 @@ public class CombatManager : MonoBehaviour
         return Mathf.Abs(target.x - desired.x) <= range && Mathf.Abs(target.y - desired.y) <= range;
     }
 
-    private Vector2 GetNextOptimalSpace(GridPosition pos, Vector2 target, short range)
+    private bool IsValid(int x, int y)
     {
-        if (IsOptimal(target, new Vector2(pos.x, pos.y - 1), range) && -1 != pos.direction_Y)
-        {
-            if (grid[pos.x, pos.y - 1].combat_Unit == null)
-            {
-                return grid[pos.x, pos.y - 1].grid_Position;
-            }
-            pos = new GridPosition(pos.x, pos.y - 1, 0, 1);
-        }
-        if (IsOptimal(target, new Vector2(pos.x, pos.y + 1), range) && 1 != pos.direction_Y)
-        {
-            if (grid[pos.x, pos.y + 1].combat_Unit == null)
-            {
-                return grid[pos.x, pos.y + 1].grid_Position;
-            }
-            pos = new GridPosition(pos.x, pos.y + 1, 0, -1);
-        }
-        //Test in the x direction
-        if (IsOptimal(target, new Vector2(pos.x - 1, pos.y), range) && -1 != pos.direction_X)
-        {
-            if (grid[pos.x - 1, pos.y].combat_Unit == null)
-            {
-                return grid[pos.x - 1, pos.y].grid_Position;
-            }
-            pos = new GridPosition(pos.x - 1, pos.y, 1, 0);
-        }
-        if (IsOptimal(target, new Vector2(pos.x + 1, pos.y), range) && 1 != pos.direction_X)
-        {
-            if (grid[pos.x + 1, pos.y].combat_Unit == null)
-            {
-                return grid[pos.x + 1, pos.y].grid_Position;
-            }
-            pos = new GridPosition(pos.x + 1, pos.y, -1, 0);
-        }
-        return new Vector2(-1, -1);
+        if (x >= 0 && x < 8 && y >= 0 && y < 8)
+            return grid[x, y].combat_Unit == null;
+        return false;
     }
 
-    private GridSpace FindNextSpace(Vector2 occupied, Vector2 target)
+    private int CalculateHeuristic(Vector2 target, Vector2 desired)
     {
-        int o_X = (int)occupied.x;
-        int o_Y = (int)occupied.y;
-        int x = (int)(target.x - occupied.x);
-        int y = (int)(target.y - occupied.y);
-        x = (x / Mathf.Abs(x)) + o_X;
-        y = (y / Mathf.Abs(y)) + o_Y;
+        return (int)(Mathf.Max(Mathf.Abs(target.x - desired.x), Mathf.Abs(target.y - desired.y)));
+    }
 
-        if (grid[x, y].combat_Unit != null)
+    private void UpdateSpace(int x, int y, float f, float g, float h, Vector2 parent)
+    {
+        grid[x, y].f = f;
+        grid[x, y].g = g;
+        grid[x, y].h = h;
+        grid[x, y].parent_Position = parent;
+    }
+
+    private void CalculatePath(Character character, Vector2 target)
+    {
+        Stack<GridSpace> path = new Stack<GridSpace>();
+        int x = (int)target.x;
+        int y = (int)target.y;
+
+        while (!(grid[x, y].parent_Position.x == x && grid[x, y].parent_Position.y == y))
         {
-            //Look in the x direction
-            if (grid[x, o_Y].combat_Unit == null)
+            path.Push(grid[x, y]);
+            int t_X = (int)grid[x, y].parent_Position.x;
+            int t_Y = (int)grid[x, y].parent_Position.y;
+            x = t_X;
+            y = t_Y;
+        }
+
+        grid[(int)character.grid_Position.x, (int)character.grid_Position.y].combat_Unit = null;
+        character.next_Space = path.Pop();
+        character.next_Space.AddCombatCharacter(character);
+        character.path = path;
+    }
+
+    private void AddElement(List<GridSpace> openList, GridSpace element)
+    {
+        for (int i = 0; i < openList.Count; i++)
+        {
+            if (element.f < openList[i].f)
             {
-                y = o_Y;
+                openList.Insert(i, element);
+                return;
             }
-            //Look in the y direction
-            else if (grid[o_X, y].combat_Unit == null)
+        }
+        openList.Add(element);
+    }
+
+    private void FindTarget(Character character)
+    {
+        for (short i = 0; i < 8; i++)
+        {
+            for (short j = 0; j < 8; j++)
             {
-                x = o_X;
-            }
-            //Look in alternate y directions
-            else if (o_X != x && o_Y == y)
-            {
-                if (y - 1 >= 0)
-                {
-                    if (grid[x, y - 1].combat_Unit == null) y--;
-                }
-                else if (y + 1 < 8)
-                {
-                    if (grid[x, y + 1].combat_Unit == null) y++;
-                }
-            }
-            //Look in alternate x directions
-            else if (o_Y != y && o_X == x)
-            {
-                if (y - 1 >= 0)
-                {
-                    if (grid[x - 1, y].combat_Unit == null) x--;
-                }
-                else if (y + 1 < 8)
-                {
-                    if (grid[x + 1, y].combat_Unit == null) x++;
-                }
-            }
-            else
-            {
-                return null;
+                grid[j, i].ResetCosts();
             }
         }
 
-        grid[o_X, o_Y].combat_Unit = null;
-        return grid[x, y];
+        List<GridSpace> openList = new List<GridSpace>();
+        bool[,] closedList = new bool[8,8];
+
+        GridSpace space = grid[(int)character.grid_Position.x, (int)character.grid_Position.y];
+        space.f = (int)Vector2.Distance(character.grid_Position, character.target.grid_Position);
+        space.g = 0;
+        space.h = 0;
+        space.parent_Position = space.grid_Position;
+        openList.Add(space);
+
+        while(openList.Count > 0)
+        {
+            space = openList[0];
+            openList.RemoveAt(0);
+            int x = (int)space.grid_Position.x;
+            int y = (int)space.grid_Position.y;
+            closedList[x, y] = true;
+
+            float g, f, h;
+
+            //WEST SUCCESSOR
+            if (IsValid(x - 1, y))
+            {
+                if (IsOptimal(character.target.grid_Position, grid[x - 1, y].grid_Position, character.range))
+                {
+                    grid[x - 1, y].parent_Position = space.grid_Position;
+                    CalculatePath(character, new Vector2(x - 1, y));
+                    return;
+                }
+                if (!closedList[x - 1, y])
+                {
+                    g = grid[x, y].g + 1;
+                    h = CalculateHeuristic(character.target.grid_Position, grid[x - 1, y].grid_Position);
+                    f = g + h;
+
+                    if (grid[x - 1, y].f > f)
+                    {
+                        UpdateSpace(x - 1, y, f, g, h, space.grid_Position);
+                        AddElement(openList, grid[x - 1, y]);
+                    }
+                }
+            }
+            //EAST SUCCESSOR
+            if (IsValid(x + 1, y))
+            {
+                if (IsOptimal(character.target.grid_Position, grid[x + 1, y].grid_Position, character.range))
+                {
+                    grid[x + 1, y].parent_Position = space.grid_Position;
+                    CalculatePath(character, new Vector2(x + 1, y));
+                    return;
+                }
+                if (!closedList[x + 1, y])
+                {
+                    g = grid[x, y].g + 1;
+                    h = CalculateHeuristic(character.target.grid_Position, grid[x + 1, y].grid_Position);
+                    f = g + h;
+
+                    if (grid[x + 1, y].f > f)
+                    {
+                        UpdateSpace(x + 1, y, f, g, h, space.grid_Position);
+                        AddElement(openList, grid[x + 1, y]);
+                    }
+                }
+            }
+            //NORTH SUCCESSOR
+            if (IsValid(x, y + 1))
+            {
+                if (IsOptimal(character.target.grid_Position, grid[x, y + 1].grid_Position, character.range))
+                {
+                    grid[x, y + 1].parent_Position = space.grid_Position;
+                    CalculatePath(character, new Vector2(x, y + 1));
+                    return;
+                }
+                if (!closedList[x, y + 1])
+                {
+                    g = grid[x, y].g + 1;
+                    h = CalculateHeuristic(character.target.grid_Position, grid[x, y + 1].grid_Position);
+                    f = g + h;
+
+                    if (grid[x, y + 1].f > f)
+                    {
+                        UpdateSpace(x, y + 1, f, g, h, space.grid_Position);
+                        AddElement(openList, grid[x, y + 1]);
+                    }
+                }
+            }
+            //SOUTH SUCCESSOR
+            if (IsValid(x, y - 1))
+            {
+                if (IsOptimal(character.target.grid_Position, grid[x, y - 1].grid_Position, character.range))
+                {
+                    grid[x, y - 1].parent_Position = space.grid_Position;
+                    CalculatePath(character, new Vector2(x, y - 1));
+                    return;
+                }
+                if (!closedList[x, y - 1])
+                {
+                    g = grid[x, y].g + 1;
+                    h = CalculateHeuristic(character.target.grid_Position, grid[x - 1, y].grid_Position);
+                    f = g + h;
+
+                    if (grid[x, y - 1].f > f)
+                    {
+                        UpdateSpace(x, y - 1, f, g, h, space.grid_Position);
+                        AddElement(openList, grid[x, y - 1]);
+                    }
+                }
+            }
+            //NORTHEAST SUCCESSOR
+            if (IsValid(x + 1, y + 1))
+            {
+                if (IsOptimal(character.target.grid_Position, grid[x + 1, y + 1].grid_Position, character.range))
+                {
+                    grid[x + 1, y + 1].parent_Position = space.grid_Position;
+                    CalculatePath(character, new Vector2(x + 1, y + 1));
+                    return;
+                }
+                if (!closedList[x + 1, y + 1])
+                {
+                    g = grid[x, y].g + 1.414f;
+                    h = CalculateHeuristic(character.target.grid_Position, grid[x + 1, y + 1].grid_Position);
+                    f = g + h;
+
+                    if (grid[x + 1, y + 1].f > f)
+                    {
+                        UpdateSpace(x + 1, y + 1, f, g, h, space.grid_Position);
+                        AddElement(openList, grid[x + 1, y + 1]);
+                    }
+                }
+            }
+            //NORTHWEST SUCCESSOR
+            if (IsValid(x - 1, y + 1))
+            {
+                if (IsOptimal(character.target.grid_Position, grid[x - 1, y + 1].grid_Position, character.range))
+                {
+                    grid[x - 1, y + 1].parent_Position = space.grid_Position;
+                    CalculatePath(character, new Vector2(x - 1, y + 1));
+                    return;
+                }
+                if (!closedList[x - 1, y + 1])
+                {
+                    g = grid[x, y].g + 1.414f;
+                    h = CalculateHeuristic(character.target.grid_Position, grid[x - 1, y + 1].grid_Position);
+                    f = g + h;
+
+                    if (grid[x - 1, y + 1].f > f)
+                    {
+                        UpdateSpace(x - 1, y + 1, f, g, h, space.grid_Position);
+                        AddElement(openList, grid[x - 1, y + 1]);
+                    }
+                }
+            }
+            //SOUTHEAST SUCCESSOR
+            if (IsValid(x + 1, y - 1))
+            {
+                if (IsOptimal(character.target.grid_Position, grid[x + 1, y - 1].grid_Position, character.range))
+                {
+                    grid[x + 1, y - 1].parent_Position = space.grid_Position;
+                    CalculatePath(character, new Vector2(x + 1, y - 1));
+                    return;
+                }
+                if (!closedList[x + 1, y - 1])
+                {
+                    g = grid[x, y].g + 1.414f;
+                    h = CalculateHeuristic(character.target.grid_Position, grid[x + 1, y - 1].grid_Position);
+                    f = g + h;
+
+                    if (grid[x + 1, y - 1].f > f)
+                    {
+                        UpdateSpace(x + 1, y - 1, f, g, h, space.grid_Position);
+                        AddElement(openList, grid[x + 1, y - 1]);
+                    }
+                }
+            }
+            //SOUTHWEST SUCCESSOR
+            if (IsValid(x - 1, y - 1))
+            {
+                if (IsOptimal(character.target.grid_Position, grid[x - 1, y - 1].grid_Position, character.range))
+                {
+                    grid[x - 1, y - 1].parent_Position = space.grid_Position;
+                    CalculatePath(character, new Vector2(x - 1, y - 1));
+                    return;
+                }
+                if (!closedList[x - 1, y - 1])
+                {
+                    g = grid[x, y].g + 1.414f;
+                    h = CalculateHeuristic(character.target.grid_Position, grid[x - 1, y - 1].grid_Position);
+                    f = g + h;
+
+                    if (grid[x - 1, y - 1].f > f)
+                    {
+                        UpdateSpace(x - 1, y - 1, f, g, h, space.grid_Position);
+                        AddElement(openList, grid[x - 1, y - 1]);
+                    }
+                }
+            }
+
+        }
     }
 }

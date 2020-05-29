@@ -44,7 +44,7 @@ public class Shop : MonoBehaviour
         currencyTracker = transform.GetChild(1).GetComponent<Text>();
         currencyTracker.text = player.gold.ToString();
         NewShop();
-        PresentItems();
+        //PresentItems();
     }
 
     // Update is called once per frame
