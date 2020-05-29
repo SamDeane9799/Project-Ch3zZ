@@ -37,7 +37,6 @@ public class CombatManager : MonoBehaviour
     void Start()
     {
         grid = new GridSpace[8, 8];
-        SetCombat(main_Player, other_Player);
     }
 
     // Update is called once per frame
@@ -45,12 +44,16 @@ public class CombatManager : MonoBehaviour
     {
         if (combat_Timer >= 5)
         {
+            if (!main_Player.in_Combat)
+            {
+                SetCombat(main_Player, other_Player);
+            }
             main_Player.in_Combat = true;
             other_Player.in_Combat = true;
             SimulateCombat(main_Player.field_Units, other_Player.field_Units);
+            SimulateCombat(other_Player.field_Units, main_Player.field_Units);
         }
         combat_Timer += Time.deltaTime;
-        //SimulateCombat(other_Player.field_Units, main_Player.field_Units);
     }
 
     private void SimulateCombat(List<Character> fielded_Units, List<Character> enemy_Units)
@@ -60,29 +63,36 @@ public class CombatManager : MonoBehaviour
         {
             if (c.target == null)
             {
-                float shortestDistance = float.MaxValue;
+                float shortestDistance = 0, distance = 0;
                 foreach (Character e in enemy_Units)
                 {
-                    float distance = Vector3.Distance(c.transform.position, e.transform.position);
-                    if ( distance < shortestDistance )
+                    distance = Vector3.Distance(c.transform.position, e.transform.position);
+                    if ( distance > shortestDistance && e.health >= 0)
                     {
                         shortestDistance = distance;
                         c.target = e;
                     }
                 }
             }
-            if (!c.Moving() && Vector2.Distance(c.grid_Position, c.target.grid_Position) > c.range)
-            {
-                FindTarget(c);
-            }
             else
             {
-                c.CastUltimate();
-                c.Attack();
+                int current_Distance = (int)Vector2.Distance(c.grid_Position, c.target.grid_Position);
+                //Debug.Log(c.grid_Position + " " + c.target.grid_Position);
+                if (!c.Moving(current_Distance) && current_Distance > c.range)
+                {
+                    Debug.Log("Finding Target");
+                    FindTarget(c);
+                }
+                else if (current_Distance <= c.range)
+                {
+                    c.CastUltimate();
+                    c.Attack();
+                }
             }
         }
     }
 
+    #region PATHFINDING
     //Target is the position of the enemy, desired is the 
     //desired position of the character
     private bool IsOptimal(Vector2 target, Vector2 desired, short range)
@@ -90,6 +100,7 @@ public class CombatManager : MonoBehaviour
         return Mathf.Abs(target.x - desired.x) <= range && Mathf.Abs(target.y - desired.y) <= range;
     }
 
+    //Determine if the position is valid within the bounds of the grid
     private bool IsValid(int x, int y)
     {
         if (x >= 0 && x < 8 && y >= 0 && y < 8)
@@ -97,11 +108,13 @@ public class CombatManager : MonoBehaviour
         return false;
     }
 
+    //Calculate the heuristic value of the tile 
     private int CalculateHeuristic(Vector2 target, Vector2 desired)
     {
         return (int)(Mathf.Max(Mathf.Abs(target.x - desired.x), Mathf.Abs(target.y - desired.y)));
     }
 
+    //Update the a* values of the gridspace
     private void UpdateSpace(int x, int y, float f, float g, float h, Vector2 parent)
     {
         grid[x, y].f = f;
@@ -110,12 +123,14 @@ public class CombatManager : MonoBehaviour
         grid[x, y].parent_Position = parent;
     }
 
+    //Starting from the determined target, find the path the character should
+    //take by checking the parents of each tile in the grid
     private void CalculatePath(Character character, Vector2 target)
     {
         Stack<GridSpace> path = new Stack<GridSpace>();
         int x = (int)target.x;
         int y = (int)target.y;
-
+        
         while (!(grid[x, y].parent_Position.x == x && grid[x, y].parent_Position.y == y))
         {
             path.Push(grid[x, y]);
@@ -125,12 +140,15 @@ public class CombatManager : MonoBehaviour
             y = t_Y;
         }
 
+        //Set the character's path and first tile to begin the pathfinding
         grid[(int)character.grid_Position.x, (int)character.grid_Position.y].combat_Unit = null;
         character.next_Space = path.Pop();
         character.next_Space.AddCombatCharacter(character);
         character.path = path;
     }
 
+    //Add an element to the open list, sorting it by position relative to its
+    //f cost
     private void AddElement(List<GridSpace> openList, GridSpace element)
     {
         for (int i = 0; i < openList.Count; i++)
@@ -144,8 +162,11 @@ public class CombatManager : MonoBehaviour
         openList.Add(element);
     }
 
+    //Perform an A* search to determine an optimal path to an un-specific target
+    //based on the character's range
     private void FindTarget(Character character)
     {
+        //Reset the grid
         for (short i = 0; i < 8; i++)
         {
             for (short j = 0; j < 8; j++)
@@ -154,18 +175,23 @@ public class CombatManager : MonoBehaviour
             }
         }
 
+        //Initialize the open and closed lists
         List<GridSpace> openList = new List<GridSpace>();
         bool[,] closedList = new bool[8,8];
 
+        //Get the first space which is the space currently occupied by
+        //the character
         GridSpace space = grid[(int)character.grid_Position.x, (int)character.grid_Position.y];
         space.f = (int)Vector2.Distance(character.grid_Position, character.target.grid_Position);
         space.g = 0;
         space.h = 0;
         space.parent_Position = space.grid_Position;
         openList.Add(space);
-
+        
         while(openList.Count > 0)
         {
+            //Remove the space from the openlist and 
+            //add it to the closed list
             space = openList[0];
             openList.RemoveAt(0);
             int x = (int)space.grid_Position.x;
@@ -350,7 +376,7 @@ public class CombatManager : MonoBehaviour
                     }
                 }
             }
-
         }
     }
+    #endregion
 }

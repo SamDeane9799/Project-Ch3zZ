@@ -49,6 +49,7 @@ public abstract class Character : MonoBehaviour
     #endregion
 
     public float attack_Timer = 0.0f;
+    public int previous_Distance;
     protected Slider healthBar;
     protected Slider manaBar;
     public Character target;
@@ -131,12 +132,12 @@ public abstract class Character : MonoBehaviour
 
     public void TakeDamage()
     {
-        health -= 5;
-        healthBar.value -= 5;
+        health -= 100;
+        healthBar.value -= 100;
         manaBar.value += 5;
     }
 
-    public bool Moving()
+    public bool Moving(int current_Distance)
     {
         if (path == null)
         {
@@ -146,7 +147,7 @@ public abstract class Character : MonoBehaviour
         {
             transform.position = next_Space.transform.position;
 
-            if (path.Count == 0)
+            if (path.Count == 0 || current_Distance >= previous_Distance)
             {
                 path = null;
                 return false;
@@ -156,9 +157,12 @@ public abstract class Character : MonoBehaviour
             next_Space = path.Pop();
             if (next_Space.combat_Unit != null)
             {
+                Debug.Log("Here");
+                path = null;
                 return false;
             }
             next_Space.AddCombatCharacter(this);
+            previous_Distance = current_Distance;
         }
         transform.position = Vector3.Lerp(transform.position, next_Space.transform.position, 0.1f);
         return true;
