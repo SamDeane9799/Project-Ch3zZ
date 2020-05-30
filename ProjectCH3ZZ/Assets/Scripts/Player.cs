@@ -153,7 +153,7 @@ public class Player : MonoBehaviour
         {
             //If player left clicks while nothing is done here we do this
             LayerMask unitMask = 1 << 9; //Character layer
-            ProjectGraphicalRay();
+            GameObject UIElement = ProjectGraphicalRay();
 
             //Checks if we clicked a character
             if (ProjectRay(unitMask))
@@ -165,26 +165,13 @@ public class Player : MonoBehaviour
                 unit_ToMove = previous_Space.unit.gameObject;
                 dragging_Unit = true;
             }
-
-            //Checks if we clicked an item
-            else if (ui_Results.Count != 0 && ui_Results[0].gameObject.GetComponent<Item>())
+            //Checking if we clicked an item
+            else if(ProjectRay(1 << 12))
             {
-                //Checks if we're clicking an item that is either in the shop or on our item bench
-                unit_ToMove = ui_Results[0].gameObject;
-                Item itemToMove = unit_ToMove.GetComponent<Item>();
-                if (!items.Contains(itemToMove))
-                {
-                    AddItem(itemToMove);
-                    playerShop.RemoveItemFromChoice(itemToMove);
-                    playerShop.ClearItems();
-                }
-                else
-                {
-                    unit_ToMove = itemToMove.gameObject;
-                    previousItemSpot = unit_ToMove.transform.position;
-                    dragging_Unit = true;
-                }
-            }
+                unit_ToMove = hit.transform.gameObject;
+
+                dragging_Unit = true;
+            }            
         }
     }
 
@@ -195,24 +182,23 @@ public class Player : MonoBehaviour
     //Add the unit to a character
     private void PlaceItem(Character clickedChar)
     {
-        RectTransform itemRectTransform = unit_ToMove.GetComponent<RectTransform>();
+        /*RectTransform itemRectTransform = unit_ToMove.GetComponent<RectTransform>();
         unit_ToMove.transform.SetParent(clickedChar.transform.GetChild(0));
         itemRectTransform.localScale = new Vector3(.75f, .75f);
-        itemRectTransform.anchoredPosition3D = new Vector3(Data.itemSpriteSideLength / 2 - 5, -Data.itemSpriteSideLength + 5, 0);
+        itemRectTransform.anchoredPosition3D = new Vector3(Data.itemSpriteSideLength / 2 - 5, -Data.itemSpriteSideLength + 5, 0);*/
+        unit_ToMove.transform.SetParent(clickedChar.transform);
+        unit_ToMove.transform.position = new Vector3(clickedChar.transform.position.x, clickedChar.transform.position.y + 1, clickedChar.transform.position.z);
         ResetHeldUnit();
     }
 
     //Add the item to the player's currently tracked items
-    protected void AddItem(Item itemToAdd)
+    public void AddItem(Item itemToAdd)
     {
         items.Add(itemToAdd);
-        RectTransform newItem = itemToAdd.GetComponent<RectTransform>();
-        newItem.SetParent(playerCanvas.transform.GetChild(4).transform);
+        Item newItem = Instantiate<Item>(itemToAdd);
         for (int i = 0; i < items.Count; i++)
         {
-            newItem.anchorMin = new Vector2(0, 1);
-            newItem.anchorMax = new Vector2(0, 1);
-            newItem.anchoredPosition3D = new Vector3((i % 3) * Data.itemSpriteSideLength + (i % 3 * 5), -(Data.itemSpriteSideLength + 5) * (items.Count / 4) - 25, 0);
+            newItem.transform.position = new Vector3(-5.5f - ((i % 3) * .5f), 5, -6.5f - (i/3) * .5f);
         }
     }
     #endregion
