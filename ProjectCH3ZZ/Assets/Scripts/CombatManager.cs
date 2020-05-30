@@ -7,6 +7,8 @@ public class CombatManager : MonoBehaviour
     public Player main_Player;
     public Player other_Player;
     private GridSpace[,] grid;
+    protected const short GRID_WIDTH = 8;
+    protected const short GRID_HEIGHT = 4;
 
     float combat_Timer;
 
@@ -15,17 +17,17 @@ public class CombatManager : MonoBehaviour
     {
         main_Player = main;
         other_Player = other;
-        for (short i = 0; i < 4; i++)
+        for (short i = 0; i < GRID_HEIGHT; i++)
         {
-            for (short j = 0; j < 8; j++)
+            for (short j = 0; j < GRID_WIDTH; j++)
             {
                 grid[j, i] = main_Player.grid[j, i];
                 grid[j, i].SetGridPosition(new Vector2 ( j, i ));
             }
         }
-        for (short i = 0; i < 4; i++)
+        for (short i = 0; i < GRID_HEIGHT; i++)
         {
-            for (short j = 0; j < 8; j++)
+            for (short j = 0; j < GRID_WIDTH; j++)
             {
                 grid[j, i + 4] = other_Player.grid[j, i];
                 grid[j, i + 4].SetGridPosition(new Vector2(j, i + 4));
@@ -36,13 +38,13 @@ public class CombatManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        grid = new GridSpace[8, 8];
+        grid = new GridSpace[GRID_WIDTH, GRID_HEIGHT * 2];
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (combat_Timer >= 5)
+        if (combat_Timer >= 10)
         {
             if (!main_Player.in_Combat)
             {
@@ -62,36 +64,45 @@ public class CombatManager : MonoBehaviour
         //Loop through the first player's units and determine what they should do 
         foreach (Character c in fielded_Units)
         {
-            if (c.target == null)
+            if (c.isActiveAndEnabled)
             {
-                //Find the next target based on the relative distance between 
-                //the enemy and the character
-                float shortestDistance = 0, distance = 0;
-                foreach (Character e in enemy_Units)
+                if (c.target == null)
                 {
-                    distance = Vector3.Distance(c.transform.position, e.transform.position);
-                    if ( distance > shortestDistance && e.health >= 0)
+                    //Find the next target based on the relative distance between 
+                    //the enemy and the character
+                    float shortestDistance = float.MaxValue, distance = 0;
+                    foreach (Character e in enemy_Units)
                     {
-                        shortestDistance = distance;
-                        c.target = e;
+                        distance = Vector3.Distance(c.transform.position, e.transform.position);
+                        if (distance < shortestDistance && e.health >= 0)
+                        {
+                            shortestDistance = distance;
+                            c.target = e;
+                        }
                     }
                 }
-            }
-            else
-            {
-                int current_Distance = (int)Vector2.Distance(c.grid_Position, c.target.grid_Position);
-                //Debug.Log(c.grid_Position + " " + c.target.grid_Position);
+                else
+                {
+                    int current_Distance = (int)Vector2.Distance(c.grid_Position, c.target.grid_Position);
+                    //Debug.Log(c.grid_Position + " " + c.target.grid_Position);
 
-                //Determine if a new path needs to be generated
-                if (!c.Moving(current_Distance) && current_Distance > c.range)
-                {
-                    FindTarget(c);
-                }
-                //If the character is in range, begin attacking
-                else if (current_Distance <= c.range)
-                {
-                    c.CastUltimate();
-                    c.Attack();
+                    //Determine if a new path needs to be generated
+                    if (!c.Moving(current_Distance) && current_Distance > c.range)
+                    {
+                        FindTarget(c);
+                    }
+                    //If the character is in range, begin attacking
+                    else if (current_Distance <= c.range)
+                    {
+                        c.CastUltimate();
+                        c.Attack();
+                        if (c.target.health <= 0)
+                        {
+                            grid[(int)c.target.grid_Position.x, (int)c.target.grid_Position.y].combat_Unit = null;
+                            c.target.gameObject.SetActive(false);
+                            c.target = null;
+                        }
+                    }
                 }
             }
         }
@@ -108,7 +119,7 @@ public class CombatManager : MonoBehaviour
     //Determine if the position is valid within the bounds of the grid
     private bool IsValid(int x, int y)
     {
-        if (x >= 0 && x < 8 && y >= 0 && y < 8)
+        if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT * 2)
             return grid[x, y].combat_Unit == null;
         return false;
     }
@@ -281,7 +292,7 @@ public class CombatManager : MonoBehaviour
                 if (!closedList[x, y - 1])
                 {
                     g = grid[x, y].g + 1;
-                    h = CalculateHeuristic(character.target.grid_Position, grid[x - 1, y].grid_Position);
+                    h = CalculateHeuristic(character.target.grid_Position, grid[x, y - 1].grid_Position);
                     f = g + h;
 
                     if (grid[x, y - 1].f > f)
