@@ -46,6 +46,7 @@ public abstract class Character : MonoBehaviour
     public short armor; //Resistance to physical damage
     public short magic_Resistance; //Resistance to magic damage
     public short range; //Range in tile units
+    public short ID; //Character num ID
     #endregion
 
     public float attack_Timer = 0.0f;
@@ -58,7 +59,7 @@ public abstract class Character : MonoBehaviour
     public Vector2 grid_Position;
     public List<ATTRIBUTES> attributes;
 
-    public virtual void Start()
+    public virtual void Awake()
     {
         attributes = new List<ATTRIBUTES>();
         healthBar = GetComponentInChildren<Canvas>().transform.GetChild(0).GetComponent<Slider>();
@@ -96,6 +97,7 @@ public abstract class Character : MonoBehaviour
     public virtual void IncrementLevel()
     {
         level++;
+        transform.localScale = new Vector3(1f, 1f, 1f);
     }
 
     //Return whether or not a character can attack

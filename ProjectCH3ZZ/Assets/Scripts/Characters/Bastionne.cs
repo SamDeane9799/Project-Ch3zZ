@@ -5,12 +5,13 @@ using UnityEngine;
 public class Bastionne : Character
 {
     // Start is called before the first frame update
-    public override void Start()
+    public override void Awake()
     {
-        base.Start();
+        base.Awake();
         attributes.Add(global::ATTRIBUTES.HUMAN);
         attributes.Add(ATTRIBUTES.BULWARK);
         SetStats(1, 1, 1, 120, 0, 40, 100, 0.6f, 650, 40, 20, 1);
+        ID = 7;
     }
     
     public override void Ultimate()

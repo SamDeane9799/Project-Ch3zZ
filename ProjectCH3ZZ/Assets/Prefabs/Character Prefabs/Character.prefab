@@ -578,6 +578,7 @@ MonoBehaviour:
   tier: 0
   level: 0
   mana: 0
+  max_Mana: 0
   base_Mana: 0
   attack_Damage: 0
   spell_Power: 0
@@ -587,7 +588,12 @@ MonoBehaviour:
   armor: 0
   magic_Resistance: 0
   range: 0
+  ID: 7
   attack_Timer: 0
+  previous_Distance: 0
+  target: {fileID: 0}
+  next_Space: {fileID: 0}
+  grid_Position: {x: 0, y: 0}
   attributes: 
 --- !u!1 &8528562332992287415
 GameObject:

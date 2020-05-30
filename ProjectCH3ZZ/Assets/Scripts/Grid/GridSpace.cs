@@ -23,6 +23,7 @@ public class GridSpace : MonoBehaviour
     {
         unit = character;
         combat_Unit = character;
+        character.grid_Position = grid_Position;
         character.transform.position = transform.position;
     }
 

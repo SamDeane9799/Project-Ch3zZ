@@ -106,7 +106,7 @@ public class Shop : MonoBehaviour
         ShopItem itemToPurchase = UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<ShopItem>();
         short costOfItem = itemToPurchase.cost;
         //Check if player has room on bench
-        if (costOfItem <= player.gold && player.AddToBench(itemToPurchase.characterPrefab))
+        if (costOfItem <= player.gold && player.BuyUnit(itemToPurchase.characterPrefab))
         {
             player.gold -= costOfItem;
             itemsInShop.Remove(itemToPurchase);

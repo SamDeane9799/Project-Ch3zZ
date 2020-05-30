@@ -11,6 +11,7 @@ public class Player : MonoBehaviour
     public short level; //The player's current level, equivalent to the amount of units they can have
     public short gold; //The amount of gold a player currently has
     public short xp;
+    public short[,] characterLevels; 
 
     protected Dictionary<ATTRIBUTES, short> p_Attributes;
     protected Text synergiesText;
@@ -34,6 +35,7 @@ public class Player : MonoBehaviour
     public bool in_Combat;
     protected GraphicRaycaster m_Raycaster;
     protected PointerEventData m_PointerEventData;
+    protected RaycastHit hit;
     protected List<RaycastResult> ui_Results;
     protected EventSystem m_Eventsystem;
 
@@ -41,6 +43,7 @@ public class Player : MonoBehaviour
     public virtual void Awake()
     {
         p_Attributes = new Dictionary<ATTRIBUTES, short>();
+        characterLevels = new short[53, 2];
         synergiesText = GameObject.Find("synergiesText").GetComponent<Text>();
         field_Units = new List<Character>();
         bench_Units = new List<Character>();
@@ -60,189 +63,332 @@ public class Player : MonoBehaviour
             for (short j = 0; j < 8; j++)
             {
                 grid[j, i] = Instantiate<GridSpace>(gridPrefab, new Vector3(j - 3.5f, 5, i - 5f), Quaternion.identity);
+                grid[j, i].SetGridPosition(new Vector2(j, i));
             }
         }
         for (short i = 0; i < 8; i++)
         {
             bench[i] = Instantiate<GridSpace>(gridPrefab, new Vector3(i - 3.5f, 5, -6.5f), Quaternion.identity);
+            bench[i].SetGridPosition(new Vector2(i, 0));
         }
     }
 
     public virtual void Update()
     {
-        if (!in_Combat)
+        //Check if the player is holding a unit
+        if (dragging_Unit)
         {
-            if (dragging_Unit)
+            //Put out raycast on Gridpositions
+            LayerMask mask = 1 << 8;
+            ProjectRay(mask);
+            unit_ToMove.transform.position = hit.point;
+            //Check if we left clicked
+            if (Input.GetMouseButtonDown(0))
             {
-                RaycastHit hit;
-                LayerMask mask = 1 << 8;
-                Ray direction = Camera.main.ScreenPointToRay(Input.mousePosition);
-                Physics.Raycast(direction, out hit, 1000, mask);
-                unit_ToMove.transform.position = hit.point;
-                if (Input.GetMouseButtonDown(0))
+                //Check if the unit we're holding is an item or character
+                if (!unit_ToMove.GetComponent<Item>())
                 {
-                    if (!unit_ToMove.GetComponent<Item>())
+                    //Checks if we're trying to sell a unit by shooting out a graphical raycast at specific ui elements
+                    Character character = unit_ToMove.GetComponent<Character>();
+                    mask = 1 << 10;
+                    ProjectGraphicalRay();
+                    if (ui_Results.Count != 0 && !unit_ToMove.GetComponent<Item>() && ui_Results[0].gameObject.name == "ShopBackground")
                     {
-                        Character character = unit_ToMove.GetComponent<Character>();
-                        mask = 1 << 10;
-                        m_PointerEventData = new PointerEventData(m_Eventsystem);
-                        m_PointerEventData.position = Input.mousePosition;
-                        ui_Results.Clear();
-                        m_Raycaster.Raycast(m_PointerEventData, ui_Results);
-                        if (ui_Results.Count != 0 && !unit_ToMove.GetComponent<Item>() && ui_Results[0].gameObject.name == "ShopBackground")
-                        {
-                            //Adding units cost to players gold
-                            gold += unit_ToMove.GetComponent<Character>().gold_Cost;
-                            if (bench_Units.Contains(character))
-                            {
-                                bench_Units.Remove(character);
-                            }
-                            else
-                            {
-                                FieldToBench(character);
-                                bench_Units.Remove(character);
-                            }
-                            Destroy(unit_ToMove.gameObject);
-                            ResetHeldUnit();
-                        }
-                        else if (Physics.Raycast(direction, out hit, 1000, mask))
-                        {
-                            GridSpace new_Spot = hit.transform.gameObject.GetComponent<GridSpace>();
-                            if (new_Spot.unit == null)
-                            {
-                                new_Spot.AddCharacter(character);
-                                occupied_Space.Add(new_Spot);
-                                previous_Space.RemoveCharacter();
-                                occupied_Space.Remove(previous_Space);
-                                if (previous_Space.transform.position.z <= -6.5f && new_Spot.transform.position.z > -6.5f)
-                                {
-                                    BenchToField(character);
-                                }
-                                else if (previous_Space.transform.position.z > -6.5f && new_Spot.transform.position.z <= -6.5f)
-                                {
-                                    FieldToBench(character);
-                                }
-
-                                ResetHeldUnit();
-                            }
-                            else if (new_Spot != previous_Space)
-                            {
-                                Character previous_Unit = character;
-                                character = new_Spot.unit;
-
-                                if (previous_Space.transform.position.z <= -6.5f && new_Spot.transform.position.z > -6.5f)
-                                {
-                                    FieldToBench(character);
-                                    BenchToField(previous_Unit);
-                                }
-                                else if (previous_Space.transform.position.z > -6.5f && new_Spot.transform.position.z <= -6.5f)
-                                {
-                                    BenchToField(character);
-                                    FieldToBench(previous_Unit);
-                                }
-
-                                new_Spot.AddCharacter(previous_Unit);
-                                previous_Space.AddCharacter(character);
-
-                                ResetHeldUnit();
-                            }
-                            else
-                            {
-                                previous_Space.ResetUnitPosition();
-                                ResetHeldUnit();
-                            }
-                        }
-
-                        else
-                        {
-                            previous_Space.ResetUnitPosition();
-                            ResetHeldUnit();
-                        }
+                        SellUnit(character);
+                    }
+                    //If we hit anything with our initial raycast we want to place the unit there
+                    else if (ProjectRay(mask))
+                    {
+                        GridSpace new_Spot = hit.transform.gameObject.GetComponent<GridSpace>();
+                        PlaceUnit(new_Spot, character);
+                    }
+                    //If the raycast hits nothing we want to place the unit in its original position and reset the held unit
+                    else
+                    {                          
+                        previous_Space.ResetUnitPosition();
+                        ResetHeldUnit();
+                    }
+                }
+                //If the unit we're holding is an item we go in here
+                else
+                {
+                    //Checking if the player clicked on a character
+                    mask = 1 << 9;
+                    if (ProjectRay(mask))
+                    {
+                        Character clickedChar = hit.transform.gameObject.GetComponent<Character>();
+                        //Add item to characters list if there is room
+                        PlaceItem(clickedChar);
                     }
                     else
                     {
-                        mask = 1 << 9;
-                        bool unitClicked = Physics.Raycast(direction, out hit, 1000, mask);
-                        if (unitClicked)
-                        {
-                            Character clickedChar = hit.transform.gameObject.GetComponent<Character>();
-                            //Add item to characters list if there is room
-                            RectTransform itemRectTransform = unit_ToMove.GetComponent<RectTransform>();
-                            unit_ToMove.transform.SetParent(clickedChar.transform.GetChild(0));
-                            itemRectTransform.localScale = new Vector3(.75f, .75f);
-                            itemRectTransform.anchoredPosition3D = new Vector3(Data.itemSpriteSideLength / 2 - 5, -Data.itemSpriteSideLength + 5, 0);
-                            ResetHeldUnit();
-                        }
-                        else
-                        {
-                            unit_ToMove.transform.position = previousItemSpot;
-                            ResetHeldUnit();
-                        }
+                        unit_ToMove.transform.position = previousItemSpot;
+                        ResetHeldUnit();
                     }
                 }
             }
+        }
 
-            //actually dont lmao IM ZOE BTW
-            else if (Input.GetMouseButtonDown(0))
+        //actually dont lmao IM ZOE BTW
+        else if (Input.GetMouseButtonDown(0))
+        {
+            //If player left clicks while nothing is done here we do this
+            LayerMask unitMask = 1 << 9;
+            ProjectGraphicalRay();
+
+            //Checks if we clicked a character
+            if (ProjectRay(unitMask))
             {
-                RaycastHit hit;
-                LayerMask mask = 1 << 9;
-                Ray direction = Camera.main.ScreenPointToRay(Input.mousePosition);
-                bool clicked = Physics.Raycast(direction, out hit, 1000, mask);
-
-                m_PointerEventData = new PointerEventData(m_Eventsystem);
-                m_PointerEventData.position = Input.mousePosition;
-                ui_Results.Clear();
-                m_Raycaster.Raycast(m_PointerEventData, ui_Results);
-                GameObject objectReturned = ui_Results[0].gameObject;
-
-                if (clicked)
+                //Updates the occupied space array
+                for (short i = 0; i < occupied_Space.Count; i++)
                 {
-                    for (short i = 0; i < occupied_Space.Count; i++)
+                    if (occupied_Space[i].transform.position == hit.transform.position)
                     {
-                        if (occupied_Space[i].transform.position == hit.transform.position)
-                        {
-                            dragging_Unit = true;
-                            unit_ToMove = occupied_Space[i].unit.gameObject;
-                            previous_Space = occupied_Space[i];
-                        }
+                        dragging_Unit = true;
+                        unit_ToMove = occupied_Space[i].unit.gameObject;
+                        previous_Space = occupied_Space[i];
                     }
                 }
-                else if (ui_Results.Count != 0 && ui_Results[0].gameObject.GetComponent<Item>())
+            }
+            //Checks if we clicked an item
+            else if (ui_Results.Count != 0 && ui_Results[0].gameObject.GetComponent<Item>())
+            {
+                //Checks if we're clicking an item that is either in the shop or on our item bench
+                unit_ToMove = ui_Results[0].gameObject;
+                Item itemToMove = unit_ToMove.GetComponent<Item>();
+                if (!items.Contains(itemToMove))
                 {
-                    unit_ToMove = ui_Results[0].gameObject;
-                    Item itemToMove = unit_ToMove.GetComponent<Item>();
-                    if (!items.Contains(itemToMove))
-                    {
-                        AddItem(itemToMove);
-                        playerShop.RemoveItemFromChoice(itemToMove);
-                        playerShop.ClearItems();
-                    }
-                    else
-                    {
-                        unit_ToMove = itemToMove.gameObject;
-                        previousItemSpot = unit_ToMove.transform.position;
-                        dragging_Unit = true;
-                    }
+                    AddItem(itemToMove);
+                    playerShop.RemoveItemFromChoice(itemToMove);
+                    playerShop.ClearItems();
+                }
+                else
+                {
+                    unit_ToMove = itemToMove.gameObject;
+                    previousItemSpot = unit_ToMove.transform.position;
+                    dragging_Unit = true;
                 }
             }
         }
     }
 
-    //Adding a unit to the bench from the shop
-    public bool AddToBench(Character characterPrefab)
+    //Projects a basic raycast at the given mask
+    private bool ProjectRay(LayerMask mask)
     {
+        Ray direction = Camera.main.ScreenPointToRay(Input.mousePosition);
+        return Physics.Raycast(direction, out hit, 1000, mask);
+    }
+
+    //projects a raycast on UI units
+    private GameObject ProjectGraphicalRay()
+    {
+        m_PointerEventData = new PointerEventData(m_Eventsystem);
+        m_PointerEventData.position = Input.mousePosition;
+        ui_Results.Clear();
+        m_Raycaster.Raycast(m_PointerEventData, ui_Results);
+        return ui_Results[0].gameObject;
+    }
+
+    private void SellUnit(Character unitToSell)
+    {
+        //Adding units cost to players gold
+        gold += unitToSell.gold_Cost;
+        if (bench_Units.Contains(unitToSell))
+        {
+            bench_Units.Remove(unitToSell);
+        }
+        else
+        {
+            FieldToBench(unitToSell);
+            bench_Units.Remove(unitToSell);
+        }
+        Destroy(unit_ToMove.gameObject);
+        ResetHeldUnit();
+    }
+
+    private void PlaceItem(Character clickedChar)
+    {
+        RectTransform itemRectTransform = unit_ToMove.GetComponent<RectTransform>();
+        unit_ToMove.transform.SetParent(clickedChar.transform.GetChild(0));
+        itemRectTransform.localScale = new Vector3(.75f, .75f);
+        itemRectTransform.anchoredPosition3D = new Vector3(Data.itemSpriteSideLength / 2 - 5, -Data.itemSpriteSideLength + 5, 0);
+        ResetHeldUnit();
+    }
+
+    private void PlaceUnit(GridSpace new_Spot, Character character)
+    {
+        if (new_Spot.unit == null)
+        {
+            new_Spot.AddCharacter(character);
+            occupied_Space.Add(new_Spot);
+            previous_Space.RemoveCharacter();
+            occupied_Space.Remove(previous_Space);
+            if (previous_Space.transform.position.z <= -6.5f && new_Spot.transform.position.z > -6.5f)
+            {
+                BenchToField(character);
+            }
+            else if (previous_Space.transform.position.z > -6.5f && new_Spot.transform.position.z <= -6.5f)
+            {
+                FieldToBench(character);
+            }
+
+            ResetHeldUnit();
+        }
+        else if (new_Spot != previous_Space)
+        {
+            Character previous_Unit = character;
+            character = new_Spot.unit;
+
+            if (previous_Space.transform.position.z <= -6.5f && new_Spot.transform.position.z > -6.5f)
+            {
+                FieldToBench(character);
+                BenchToField(previous_Unit);
+            }
+            else if (previous_Space.transform.position.z > -6.5f && new_Spot.transform.position.z <= -6.5f)
+            {
+                BenchToField(character);
+                FieldToBench(previous_Unit);
+            }
+
+            new_Spot.AddCharacter(previous_Unit);
+            previous_Space.AddCharacter(character);
+
+            ResetHeldUnit();
+        }
+        else
+        {
+            previous_Space.ResetUnitPosition();
+            ResetHeldUnit();
+        }
+    }
+
+    private bool UpgradeUnit(Character unit, short level)
+    {
+        if (characterLevels[unit.ID, level - 1] == 3)
+        {
+            int unitIndex = -1;
+            for (int i = 0; i < field_Units.Count; i++)
+            {
+                if (field_Units[i].ID == unit.ID && field_Units[i].level == level)
+                {
+                    unitIndex = i;
+                    break;
+                }
+            }
+            if (unitIndex != -1)
+            {
+                field_Units[unitIndex].IncrementLevel();
+                characterLevels[unit.ID, level]++;
+            }
+            else
+            {
+                for(int i = 0; i < bench_Units.Count; i++)
+                {
+                    if(bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
+                    {
+                        unitIndex = i;
+                        break;
+                    }
+                }
+                bench_Units[unitIndex].IncrementLevel();
+                Debug.Log(unit.ID + " | " + level);
+                if(level < 2) characterLevels[unit.ID, level]++;
+            }
+            characterLevels[unit.ID, level - 1]--;
+            for (int i = bench_Units.Count - 1; i >= 0; i--)
+            {
+                if (bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
+                {
+                    characterLevels[bench_Units[i].ID, level - 1]--;
+                    Destroy(bench_Units[i].gameObject);
+                    bench_Units.RemoveAt(i);
+                    if (characterLevels[unit.ID, level - 1] == 0) break;
+                }
+            }
+            if(characterLevels[unit.ID, level - 1] > 0)
+            {
+                for(int i = unitIndex + 1; i < field_Units.Count; i++)
+                {
+                    if(field_Units[i].ID == unit.ID && field_Units[i].level == level)
+                    {
+                        Destroy(field_Units[i].gameObject);
+                        field_Units.RemoveAt(i);
+                        characterLevels[unit.ID, level - 1]--;
+                        break;
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private bool UpgradeUnitInCombat(Character unit, short level)
+    {
+        if (characterLevels[unit.ID, level - 1] >= 3 && bench_Units.Count > 0)
+        {
+            int unitIndex = -1;
+            for (int i = 0; i < bench_Units.Count; i++)
+            {
+                if (bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
+                {
+                    unitIndex = i;
+                    break;
+                }
+            }
+            List<Character> unitsToRemove = new List<Character>();
+            for (int i = bench_Units.Count - 1; i > unitIndex; i--)
+            {
+                if (bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
+                {
+                    unitsToRemove.Add(bench_Units[i]);
+                    if(unitsToRemove.Count == 2)
+                    {
+                        for(int j = 0; j < unitsToRemove.Count; j++)
+                        {
+                            Destroy(unitsToRemove[j].gameObject);
+                            bench_Units.Remove(unitsToRemove[j]);
+                            characterLevels[unit.ID, level - 1] --;
+                        }
+                    }
+                    bench_Units[unitIndex].IncrementLevel();
+                    characterLevels[unit.ID, level - 1]++;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    //Adding a unit to the bench from the shop
+    public bool BuyUnit(Character characterPrefab)
+    {
+        Character character = null;
         for (short i = 0; i < bench.Length; i++)
         {
             if (bench[i].unit == null)
             {
-                Character character = Instantiate<Character>(characterPrefab, Vector3.zero, Quaternion.identity);
+                character = Instantiate<Character>(characterPrefab, Vector3.zero, Quaternion.identity);
                 bench[i].AddCharacter(character);
+                bench_Units.Insert(i, character);
                 occupied_Space.Add(bench[i]);
-                return true;
+                character.gameObject.SetActive(false);
+                break;
             }
         }
-        return false;
+        if (character == null) return false;
+        characterLevels[characterPrefab.ID, 0]++;
+        if (!in_Combat)
+        {
+            if (UpgradeUnit(characterPrefab, 1)) UpgradeUnit(characterPrefab, 2);
+            else character.gameObject.SetActive(true);
+        }
+        else
+        {
+            if(UpgradeUnitInCombat(characterPrefab, 1)) UpgradeUnit(characterPrefab, 2);
+            else character.gameObject.SetActive(true);
+        }
+        return true;
     }
 
     private void ResetHeldUnit()
@@ -258,6 +404,7 @@ public class Player : MonoBehaviour
     {
         bench_Units.Remove(unit);
         field_Units.Add(unit);
+        bench[(int)unit.grid_Position.x].RemoveCharacter();
         foreach (Character c in field_Units)
         {
             if (unit.name == c.name && c != unit)
@@ -283,6 +430,8 @@ public class Player : MonoBehaviour
     {
         field_Units.Remove(unit);
         bench_Units.Add(unit);
+        grid[(int)unit.grid_Position.x, (int)unit.grid_Position.y].RemoveCharacter();
+
         foreach (Character c in field_Units)
         {
             if (unit.name == c.name && unit != c)
