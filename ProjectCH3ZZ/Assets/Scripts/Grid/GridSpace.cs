@@ -4,11 +4,15 @@ using UnityEngine;
 
 public class GridSpace : MonoBehaviour
 {
+    // --- GRID DATA ---
+    [Header("Grid Data")]
     public Character unit;
     public Character combat_Unit;
     public Vector2 grid_Position;
-    public Vector2 parent_Position;
 
+    // --- A* DATA ---
+    [Header("A* Data")]
+    public Vector2 parent_Position;
     public float g;
     public float f;
     public float h;

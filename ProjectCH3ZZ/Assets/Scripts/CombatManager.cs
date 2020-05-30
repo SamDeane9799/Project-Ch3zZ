@@ -142,9 +142,7 @@ public class CombatManager : MonoBehaviour
 
         //Set the character's path and first tile to begin the pathfinding
         grid[(int)character.grid_Position.x, (int)character.grid_Position.y].combat_Unit = null;
-        character.next_Space = path.Pop();
-        character.next_Space.AddCombatCharacter(character);
-        character.path = path;
+        character.AcquirePath(path);
     }
 
     //Add an element to the open list, sorting it by position relative to its

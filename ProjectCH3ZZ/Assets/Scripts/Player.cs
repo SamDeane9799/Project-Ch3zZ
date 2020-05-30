@@ -7,57 +7,75 @@ using UnityEngine.EventSystems;
 
 public class Player : MonoBehaviour
 {
-    public GridSpace gridPrefab;
+    // --- PLAYER DATA ---
+    [Header("Player Data")]
     public short level; //The player's current level, equivalent to the amount of units they can have
     public short gold; //The amount of gold a player currently has
     public short xp;
-    public short[,] characterLevels; 
+    public bool in_Combat;
+    private PLAYER_MODIFIER player_Mod;
 
-    protected Dictionary<ATTRIBUTES, short> p_Attributes;
-    protected Text synergiesText;
-    protected Canvas playerCanvas;
-    public CHARACTER_MODIFIER[] current_Mods;
-    PLAYER_MODIFIER player_Mod;
-    public List<Character> field_Units;
-    public List<Character> bench_Units;
-    public List<Item> items;
-    protected Vector3 previousItemSpot;
-    protected Shop playerShop;
-
+    // --- GRID DATA ---
+    [Header("Grid Data")]
+    public GridSpace gridPrefab;
     public GridSpace[,] grid;
     public GridSpace[] bench;
-    public List<GridSpace> occupied_Space;
+    protected List<GridSpace> occupied_Space; //All currently occupied spaces
+
+    // --- CHARACTER DATA ---
+    [Header("Character Data")]
+    public CHARACTER_MODIFIER[] current_Mods;
+    protected Dictionary<ATTRIBUTES, short> p_Attributes;
+    public List<Character> field_Units; //All units on the field
+    public List<Character> bench_Units; //All units on the bench
+    public short[,] characterLevels; //The amount of a particular character at a certain level
+    protected Text synergiesText;
+
+    // --- ITEM DATA ---
+    [Header("Item Data")]
+    public List<Item> items;
+    protected Vector3 previousItemSpot;
+
+    // --- SHOP DATA ---
+    protected Canvas playerCanvas;
+    protected Shop playerShop;
 
     //Variables for moving various units around
     protected GameObject unit_ToMove;
     protected GridSpace previous_Space;
     protected bool dragging_Unit;
-    public bool in_Combat;
+
+    //Important variables for determining
+    //the results of a raycast
+    protected RaycastHit hit;
     protected GraphicRaycaster m_Raycaster;
     protected PointerEventData m_PointerEventData;
-    protected RaycastHit hit;
     protected List<RaycastResult> ui_Results;
     protected EventSystem m_Eventsystem;
 
     // Start is called before the first frame update
     public virtual void Awake()
     {
+        //Initialize important stuff i guess
         p_Attributes = new Dictionary<ATTRIBUTES, short>();
-        characterLevels = new short[53, 2];
-        synergiesText = GameObject.Find("synergiesText").GetComponent<Text>();
+        current_Mods = new CHARACTER_MODIFIER[19]; //Number of possible mods
+        characterLevels = new short[53, 3]; //Number of characters and possible levels
         field_Units = new List<Character>();
         bench_Units = new List<Character>();
+
+        synergiesText = GameObject.Find("synergiesText").GetComponent<Text>();
+
         playerCanvas = GetComponentInChildren<Canvas>();
         playerShop = GetComponentInChildren<Shop>();
         m_Raycaster = GetComponentInChildren<GraphicRaycaster>();
         ui_Results = new List<RaycastResult>();
         m_Eventsystem = GetComponent<EventSystem>();
-        current_Mods = new CHARACTER_MODIFIER[19]; //Number of possible mods
-
+        
         grid = new GridSpace[8, 4];
         bench = new GridSpace[8];
         occupied_Space = new List<GridSpace>();
 
+        //Initialize the player's grid
         for (short i = 0; i < 4; i++)
         {
             for (short j = 0; j < 8; j++)
@@ -73,13 +91,14 @@ public class Player : MonoBehaviour
         }
     }
 
+    //CALLED EVERY FRAME
     public virtual void Update()
     {
         //Check if the player is holding a unit
         if (dragging_Unit)
         {
             //Put out raycast on Gridpositions
-            LayerMask mask = 1 << 8;
+            LayerMask mask = 1 << 8; //Plane layer
             ProjectRay(mask);
             unit_ToMove.transform.position = hit.point;
             //Check if we left clicked
@@ -90,7 +109,7 @@ public class Player : MonoBehaviour
                 {
                     //Checks if we're trying to sell a unit by shooting out a graphical raycast at specific ui elements
                     Character character = unit_ToMove.GetComponent<Character>();
-                    mask = 1 << 10;
+                    mask = 1 << 10; //Grid layer
                     ProjectGraphicalRay();
                     if (ui_Results.Count != 0 && !unit_ToMove.GetComponent<Item>() && ui_Results[0].gameObject.name == "ShopBackground")
                     {
@@ -113,13 +132,14 @@ public class Player : MonoBehaviour
                 else
                 {
                     //Checking if the player clicked on a character
-                    mask = 1 << 9;
+                    mask = 1 << 9; //Character layer
                     if (ProjectRay(mask))
                     {
                         Character clickedChar = hit.transform.gameObject.GetComponent<Character>();
                         //Add item to characters list if there is room
                         PlaceItem(clickedChar);
                     }
+                    //If we don't click on a unit, place the item back to its original spot
                     else
                     {
                         unit_ToMove.transform.position = previousItemSpot;
@@ -129,11 +149,11 @@ public class Player : MonoBehaviour
             }
         }
 
-        //actually dont lmao IM ZOE BTW
+        //Check when the player clicks on a unit
         else if (Input.GetMouseButtonDown(0))
         {
             //If player left clicks while nothing is done here we do this
-            LayerMask unitMask = 1 << 9;
+            LayerMask unitMask = 1 << 9; //Character layer
             ProjectGraphicalRay();
 
             //Checks if we clicked a character
@@ -150,6 +170,7 @@ public class Player : MonoBehaviour
                     }
                 }
             }
+
             //Checks if we clicked an item
             else if (ui_Results.Count != 0 && ui_Results[0].gameObject.GetComponent<Item>())
             {
@@ -172,6 +193,143 @@ public class Player : MonoBehaviour
         }
     }
 
+    // --- HELPER METHODS ---
+
+    #region GET ITEMS
+
+    //Add the unit to a character
+    private void PlaceItem(Character clickedChar)
+    {
+        RectTransform itemRectTransform = unit_ToMove.GetComponent<RectTransform>();
+        unit_ToMove.transform.SetParent(clickedChar.transform.GetChild(0));
+        itemRectTransform.localScale = new Vector3(.75f, .75f);
+        itemRectTransform.anchoredPosition3D = new Vector3(Data.itemSpriteSideLength / 2 - 5, -Data.itemSpriteSideLength + 5, 0);
+        ResetHeldUnit();
+    }
+
+    //Add the item to the player's currently tracked items
+    protected void AddItem(Item itemToAdd)
+    {
+        items.Add(itemToAdd);
+        RectTransform newItem = itemToAdd.GetComponent<RectTransform>();
+        newItem.SetParent(playerCanvas.transform.GetChild(4).transform);
+        for (int i = 0; i < items.Count; i++)
+        {
+            newItem.anchorMin = new Vector2(0, 1);
+            newItem.anchorMax = new Vector2(0, 1);
+            newItem.anchoredPosition3D = new Vector3((i % 3) * Data.itemSpriteSideLength + (i % 3 * 5), -(Data.itemSpriteSideLength + 5) * (items.Count / 4) - 25, 0);
+        }
+    }
+    #endregion
+
+    #region BUYING UNITS
+
+    //Upgrade a unit while the player is not currently in combat
+    //Prioritize upgrading a unit on the field and searching for units
+    //on the bench to get rid of, before getting rid of units
+    //on the field
+    private bool UpgradeUnit(Character unit, short level)
+    {
+        if (characterLevels[unit.ID, level - 1] == 3)
+        {
+            int unitIndex = -1;
+            for (int i = 0; i < field_Units.Count; i++)
+            {
+                if (field_Units[i].ID == unit.ID && field_Units[i].level == level)
+                {
+                    unitIndex = i;
+                    break;
+                }
+            }
+            if (unitIndex != -1)
+            {
+                field_Units[unitIndex].IncrementLevel();
+                characterLevels[unit.ID, level]++;
+            }
+            else
+            {
+                for (int i = 0; i < bench_Units.Count; i++)
+                {
+                    if (bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
+                    {
+                        unitIndex = i;
+                        break;
+                    }
+                }
+                bench_Units[unitIndex].IncrementLevel();
+                characterLevels[unit.ID, level]++;
+            }
+            characterLevels[unit.ID, level - 1]--;
+            for (int i = bench_Units.Count - 1; i >= 0; i--)
+            {
+                if (bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
+                {
+                    characterLevels[bench_Units[i].ID, level - 1]--;
+                    Destroy(bench_Units[i].gameObject);
+                    bench_Units.RemoveAt(i);
+                    if (characterLevels[unit.ID, level - 1] == 0) break;
+                }
+            }
+            if (characterLevels[unit.ID, level - 1] > 0)
+            {
+                for (int i = unitIndex + 1; i < field_Units.Count; i++)
+                {
+                    if (field_Units[i].ID == unit.ID && field_Units[i].level == level)
+                    {
+                        Destroy(field_Units[i].gameObject);
+                        field_Units.RemoveAt(i);
+                        characterLevels[unit.ID, level - 1]--;
+                        break;
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    //Look specifically at units on the bench while the player is in combat
+    //to determine if anything needs an upgrade
+    private bool UpgradeUnitInCombat(Character unit, short level)
+    {
+        if (characterLevels[unit.ID, level - 1] >= 3 && bench_Units.Count > 0)
+        {
+            int unitIndex = -1;
+            for (int i = 0; i < bench_Units.Count; i++)
+            {
+                if (bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
+                {
+                    unitIndex = i;
+                    break;
+                }
+            }
+            List<Character> unitsToRemove = new List<Character>();
+            for (int i = bench_Units.Count - 1; i > unitIndex; i--)
+            {
+                if (bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
+                {
+                    unitsToRemove.Add(bench_Units[i]);
+                    if (unitsToRemove.Count == 2)
+                    {
+                        for (int j = 0; j < unitsToRemove.Count; j++)
+                        {
+                            Destroy(unitsToRemove[j].gameObject);
+                            bench_Units.Remove(unitsToRemove[j]);
+                            characterLevels[unit.ID, level - 1]--;
+                        }
+                    }
+                    bench_Units[unitIndex].IncrementLevel();
+                    characterLevels[unit.ID, level - 1]++;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    #endregion
+
+    #region CLICKING UNITS
+    
     //Projects a basic raycast at the given mask
     private bool ProjectRay(LayerMask mask)
     {
@@ -189,32 +347,9 @@ public class Player : MonoBehaviour
         return ui_Results[0].gameObject;
     }
 
-    private void SellUnit(Character unitToSell)
-    {
-        //Adding units cost to players gold
-        gold += unitToSell.gold_Cost;
-        if (bench_Units.Contains(unitToSell))
-        {
-            bench_Units.Remove(unitToSell);
-        }
-        else
-        {
-            FieldToBench(unitToSell);
-            bench_Units.Remove(unitToSell);
-        }
-        Destroy(unit_ToMove.gameObject);
-        ResetHeldUnit();
-    }
-
-    private void PlaceItem(Character clickedChar)
-    {
-        RectTransform itemRectTransform = unit_ToMove.GetComponent<RectTransform>();
-        unit_ToMove.transform.SetParent(clickedChar.transform.GetChild(0));
-        itemRectTransform.localScale = new Vector3(.75f, .75f);
-        itemRectTransform.anchoredPosition3D = new Vector3(Data.itemSpriteSideLength / 2 - 5, -Data.itemSpriteSideLength + 5, 0);
-        ResetHeldUnit();
-    }
-
+    //Place a unit on the grid based on the 
+    //gridspace being occupied or not, otherwise
+    //just reset the unit's position
     private void PlaceUnit(GridSpace new_Spot, Character character)
     {
         if (new_Spot.unit == null)
@@ -262,105 +397,9 @@ public class Player : MonoBehaviour
         }
     }
 
-    private bool UpgradeUnit(Character unit, short level)
-    {
-        if (characterLevels[unit.ID, level - 1] == 3)
-        {
-            int unitIndex = -1;
-            for (int i = 0; i < field_Units.Count; i++)
-            {
-                if (field_Units[i].ID == unit.ID && field_Units[i].level == level)
-                {
-                    unitIndex = i;
-                    break;
-                }
-            }
-            if (unitIndex != -1)
-            {
-                field_Units[unitIndex].IncrementLevel();
-                characterLevels[unit.ID, level]++;
-            }
-            else
-            {
-                for(int i = 0; i < bench_Units.Count; i++)
-                {
-                    if(bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
-                    {
-                        unitIndex = i;
-                        break;
-                    }
-                }
-                bench_Units[unitIndex].IncrementLevel();
-                Debug.Log(unit.ID + " | " + level);
-                if(level < 2) characterLevels[unit.ID, level]++;
-            }
-            characterLevels[unit.ID, level - 1]--;
-            for (int i = bench_Units.Count - 1; i >= 0; i--)
-            {
-                if (bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
-                {
-                    characterLevels[bench_Units[i].ID, level - 1]--;
-                    Destroy(bench_Units[i].gameObject);
-                    bench_Units.RemoveAt(i);
-                    if (characterLevels[unit.ID, level - 1] == 0) break;
-                }
-            }
-            if(characterLevels[unit.ID, level - 1] > 0)
-            {
-                for(int i = unitIndex + 1; i < field_Units.Count; i++)
-                {
-                    if(field_Units[i].ID == unit.ID && field_Units[i].level == level)
-                    {
-                        Destroy(field_Units[i].gameObject);
-                        field_Units.RemoveAt(i);
-                        characterLevels[unit.ID, level - 1]--;
-                        break;
-                    }
-                }
-            }
-            return true;
-        }
-        return false;
-    }
-
-    private bool UpgradeUnitInCombat(Character unit, short level)
-    {
-        if (characterLevels[unit.ID, level - 1] >= 3 && bench_Units.Count > 0)
-        {
-            int unitIndex = -1;
-            for (int i = 0; i < bench_Units.Count; i++)
-            {
-                if (bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
-                {
-                    unitIndex = i;
-                    break;
-                }
-            }
-            List<Character> unitsToRemove = new List<Character>();
-            for (int i = bench_Units.Count - 1; i > unitIndex; i--)
-            {
-                if (bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
-                {
-                    unitsToRemove.Add(bench_Units[i]);
-                    if(unitsToRemove.Count == 2)
-                    {
-                        for(int j = 0; j < unitsToRemove.Count; j++)
-                        {
-                            Destroy(unitsToRemove[j].gameObject);
-                            bench_Units.Remove(unitsToRemove[j]);
-                            characterLevels[unit.ID, level - 1] --;
-                        }
-                    }
-                    bench_Units[unitIndex].IncrementLevel();
-                    characterLevels[unit.ID, level - 1]++;
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     //Adding a unit to the bench from the shop
+    //After purchasing the units take a look and see if 
+    //the units can be upgraded
     public bool BuyUnit(Character characterPrefab)
     {
         Character character = null;
@@ -385,12 +424,32 @@ public class Player : MonoBehaviour
         }
         else
         {
-            if(UpgradeUnitInCombat(characterPrefab, 1)) UpgradeUnit(characterPrefab, 2);
+            if (UpgradeUnitInCombat(characterPrefab, 1)) UpgradeUnit(characterPrefab, 2);
             else character.gameObject.SetActive(true);
         }
         return true;
     }
 
+    //Sell a unit by removing all references to it 
+    private void SellUnit(Character unitToSell)
+    {
+        //Adding units cost to players gold
+        gold += unitToSell.gold_Cost;
+        if (bench_Units.Contains(unitToSell))
+        {
+            bench_Units.Remove(unitToSell);
+        }
+        else
+        {
+            FieldToBench(unitToSell);
+            bench_Units.Remove(unitToSell);
+        }
+        Destroy(unit_ToMove.gameObject);
+        ResetHeldUnit();
+    }
+
+    //Reset the unit being held so that
+    //a new one can be acquired
     private void ResetHeldUnit()
     {
         unit_ToMove = null;
@@ -419,13 +478,11 @@ public class Player : MonoBehaviour
             CheckAttributes(o);
         }
         SetText();
-        //foreach (CHARACTER_MODIFIER mod in current_Mods)
-        //{
-        //    if (mod != CHARACTER_MODIFIER.NULL)
-        //        Debug.Log(mod);
-        //}
     }
 
+    //Move a unit from the field to the bench,
+    //adding it to the appropriate data structure
+    //and updating the synergies
     protected virtual void FieldToBench(Character unit)
     {
         field_Units.Remove(unit);
@@ -446,23 +503,29 @@ public class Player : MonoBehaviour
             if (p_Attributes[o] == 0) p_Attributes.Remove(o);
         }
         SetText();
-        //foreach (CHARACTER_MODIFIER mod in current_Mods)
-        //{
-        //    if (mod != CHARACTER_MODIFIER.NULL)
-        //        Debug.Log(mod);
-        //}
     }
 
-    protected void AddItem(Item itemToAdd)
+    //Set the text of the player's UI
+    //to properly display their current 
+    //synergies
+    private void SetText()
     {
-        items.Add(itemToAdd);
-        RectTransform newItem = itemToAdd.GetComponent<RectTransform>();
-        newItem.SetParent(playerCanvas.transform.GetChild(4).transform);
-        for (int i = 0; i < items.Count; i++)
+        List<KeyValuePair<ATTRIBUTES, short>> sortedAttributes = p_Attributes.ToList();
+
+        sortedAttributes.Sort(
+            delegate (KeyValuePair<ATTRIBUTES, short> pair1,
+            KeyValuePair<ATTRIBUTES, short> pair2)
+            {
+                if (pair1.Value == pair2.Value)
+                {
+                    return pair2.Key.CompareTo(pair1.Key);
+                }
+                return pair2.Value.CompareTo(pair1.Value);
+            });
+        synergiesText.text = "";
+        foreach (KeyValuePair<ATTRIBUTES, short> o in sortedAttributes)
         {
-            newItem.anchorMin = new Vector2(0, 1);
-            newItem.anchorMax = new Vector2(0, 1);
-            newItem.anchoredPosition3D = new Vector3((i % 3) * Data.itemSpriteSideLength + (i % 3 * 5), -(Data.itemSpriteSideLength + 5) * (items.Count / 4) - 25, 0);
+            synergiesText.text += o.Key + " : " + o.Value + "\n";
         }
     }
 
@@ -485,7 +548,7 @@ public class Player : MonoBehaviour
                 {
                     current_Mods[11] = CHARACTER_MODIFIER.BEAST_1;
                 }
-                else 
+                else
                 {
                     current_Mods[11] = CHARACTER_MODIFIER.NULL;
                 }
@@ -766,28 +829,8 @@ public class Player : MonoBehaviour
                     current_Mods[10] = CHARACTER_MODIFIER.NULL;
                 }
                 break;
-        
+
         }
     }
-
-    private void SetText()
-    {
-        List<KeyValuePair<ATTRIBUTES, short>> sortedAttributes = p_Attributes.ToList();
-
-        sortedAttributes.Sort(
-            delegate (KeyValuePair<ATTRIBUTES, short> pair1,
-            KeyValuePair<ATTRIBUTES, short> pair2)
-            {
-                if (pair1.Value == pair2.Value)
-                {
-                    return pair2.Key.CompareTo(pair1.Key);
-                }
-                return pair2.Value.CompareTo(pair1.Value);
-            });
-        synergiesText.text = "";
-        foreach (KeyValuePair<ATTRIBUTES, short> o in sortedAttributes)
-        {
-            synergiesText.text += o.Key + " : " + o.Value + "\n";
-        }      
-    }
+    #endregion
 }

@@ -32,6 +32,10 @@ public enum ATTRIBUTES
 public abstract class Character : MonoBehaviour
 {
     #region CHARACTER_STATS
+    // --- CHARACTER DATA ---
+    [Header("Character Data")]
+    public List<ATTRIBUTES> attributes;
+    public Vector2 grid_Position;
     public short gold_Cost; //Amount of gold required to purchase the character
     public short tier; //Tier related to its frequency in the shop
     public short level; //The level of the unit
@@ -49,15 +53,18 @@ public abstract class Character : MonoBehaviour
     public short ID; //Character num ID
     #endregion
 
-    public float attack_Timer = 0.0f;
-    public int previous_Distance;
+    //Information for attacking
+    public Character target;
+    protected float attack_Timer = 0.0f;
+
+    // --- UI DATA ---
     protected Slider healthBar;
     protected Slider manaBar;
-    public Character target;
-    public GridSpace next_Space;
-    public Stack<GridSpace> path;
-    public Vector2 grid_Position;
-    public List<ATTRIBUTES> attributes;
+
+    //Information for pathfinding
+    protected GridSpace next_Space;
+    protected Stack<GridSpace> path;
+    protected int previous_Distance;
 
     public virtual void Awake()
     {
@@ -149,24 +156,38 @@ public abstract class Character : MonoBehaviour
         {
             transform.position = next_Space.transform.position;
 
+            //If there are no more tiles to follow, or if the distance
+            //between the target and this character grows, 
+            //Change path
             if (path.Count == 0 || current_Distance >= previous_Distance)
             {
                 path = null;
                 return false;
             }
 
+            //Get a new space to find
             next_Space.combat_Unit = null;
             next_Space = path.Pop();
+
+            //Change path if the next space is occupied
             if (next_Space.combat_Unit != null)
             {
-                Debug.Log("Here");
                 path = null;
                 return false;
             }
+
+            //Add the character to the path
             next_Space.AddCombatCharacter(this);
             previous_Distance = current_Distance;
         }
         transform.position = Vector3.Lerp(transform.position, next_Space.transform.position, 0.1f);
         return true;
+    }
+
+    public void AcquirePath(Stack<GridSpace> _path)
+    {
+        next_Space = _path.Pop();
+        next_Space.AddCombatCharacter(this);
+        path = _path;
     }
 }
