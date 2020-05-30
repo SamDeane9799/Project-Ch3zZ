@@ -19,7 +19,6 @@ public class TestPlayer : Player
 
         grid = new GridSpace[8, 4];
         bench = new GridSpace[8];
-        occupied_Space = new List<GridSpace>();
 
         for (short i = 0; i < 4; i++)
         {

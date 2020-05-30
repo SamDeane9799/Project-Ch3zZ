@@ -1,9 +1,8 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.UI;
+﻿using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 public class Player : MonoBehaviour
 {
@@ -20,7 +19,6 @@ public class Player : MonoBehaviour
     public GridSpace gridPrefab;
     public GridSpace[,] grid;
     public GridSpace[] bench;
-    protected List<GridSpace> occupied_Space; //All currently occupied spaces
 
     // --- CHARACTER DATA ---
     [Header("Character Data")]
@@ -30,6 +28,8 @@ public class Player : MonoBehaviour
     public List<Character> bench_Units; //All units on the bench
     public short[,] characterLevels; //The amount of a particular character at a certain level
     protected Text synergiesText;
+    protected const short GRID_WIDTH = 8;
+    protected const short GRID_HEIGHT = 4;
 
     // --- ITEM DATA ---
     [Header("Item Data")]
@@ -71,23 +71,22 @@ public class Player : MonoBehaviour
         ui_Results = new List<RaycastResult>();
         m_Eventsystem = GetComponent<EventSystem>();
         
-        grid = new GridSpace[8, 4];
-        bench = new GridSpace[8];
-        occupied_Space = new List<GridSpace>();
+        grid = new GridSpace[GRID_WIDTH, GRID_HEIGHT];
+        bench = new GridSpace[GRID_WIDTH];
 
         //Initialize the player's grid
-        for (short i = 0; i < 4; i++)
+        for (short i = 0; i < GRID_HEIGHT; i++)
         {
-            for (short j = 0; j < 8; j++)
+            for (short j = 0; j < GRID_WIDTH; j++)
             {
                 grid[j, i] = Instantiate<GridSpace>(gridPrefab, new Vector3(j - 3.5f, 5, i - 5f), Quaternion.identity);
                 grid[j, i].SetGridPosition(new Vector2(j, i));
             }
         }
-        for (short i = 0; i < 8; i++)
+        for (short i = 0; i < GRID_WIDTH; i++)
         {
             bench[i] = Instantiate<GridSpace>(gridPrefab, new Vector3(i - 3.5f, 5, -6.5f), Quaternion.identity);
-            bench[i].SetGridPosition(new Vector2(i, 0));
+            bench[i].SetGridPosition(new Vector2(i, GRID_HEIGHT));
         }
     }
 
@@ -159,16 +158,12 @@ public class Player : MonoBehaviour
             //Checks if we clicked a character
             if (ProjectRay(unitMask))
             {
-                //Updates the occupied space array
-                for (short i = 0; i < occupied_Space.Count; i++)
-                {
-                    if (occupied_Space[i].transform.position == hit.transform.position)
-                    {
-                        dragging_Unit = true;
-                        unit_ToMove = occupied_Space[i].unit.gameObject;
-                        previous_Space = occupied_Space[i];
-                    }
-                }
+                //Find the space occupied by the character
+                Character character = hit.transform.gameObject.GetComponent<Character>();
+                if (character.grid_Position.y == GRID_HEIGHT) previous_Space = bench[(int)character.grid_Position.x];
+                else previous_Space = grid[(int)character.grid_Position.x, (int)character.grid_Position.y];
+                unit_ToMove = previous_Space.unit.gameObject;
+                dragging_Unit = true;
             }
 
             //Checks if we clicked an item
@@ -224,65 +219,77 @@ public class Player : MonoBehaviour
 
     #region BUYING UNITS
 
+    //Method to determine if a unit with a valid ID exists in the 
+    //given context
+    private int FindUnitID(List<Character> units, short ID, short level)
+    {
+        for (int i = 0; i < units.Count; i++)
+        {
+            if (units[i].ID == ID && units[i].level == level)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     //Upgrade a unit while the player is not currently in combat
     //Prioritize upgrading a unit on the field and searching for units
     //on the bench to get rid of, before getting rid of units
     //on the field
-    private bool UpgradeUnit(Character unit, short level)
+    private bool UpgradeUnit(short ID, short level)
     {
-        if (characterLevels[unit.ID, level - 1] == 3)
+        //If enough of the unit type exists at the particular level
+        if (characterLevels[ID, level - 1] == 3)
         {
-            int unitIndex = -1;
-            for (int i = 0; i < field_Units.Count; i++)
-            {
-                if (field_Units[i].ID == unit.ID && field_Units[i].level == level)
-                {
-                    unitIndex = i;
-                    break;
-                }
-            }
+            //Find the id of the first field unit
+            int unitIndex = FindUnitID(field_Units, ID, level);
+
             if (unitIndex != -1)
             {
                 field_Units[unitIndex].IncrementLevel();
-                characterLevels[unit.ID, level]++;
             }
+            //If a field unit of that type does not exist, go ahead and search the bench
             else
             {
-                for (int i = 0; i < bench_Units.Count; i++)
-                {
-                    if (bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
-                    {
-                        unitIndex = i;
-                        break;
-                    }
-                }
+                unitIndex = FindUnitID(bench_Units, ID, level);
                 bench_Units[unitIndex].IncrementLevel();
-                characterLevels[unit.ID, level]++;
             }
-            characterLevels[unit.ID, level - 1]--;
+            characterLevels[ID, level]++;
+            characterLevels[ID, level - 1]--;
+            List<Character> toRemove = new List<Character>();
+
+            //Search through the bench units and break once enough bench units have
+            //been discovered
             for (int i = bench_Units.Count - 1; i >= 0; i--)
             {
-                if (bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
+                if (bench_Units[i].ID == ID && bench_Units[i].level == level)
                 {
-                    characterLevels[bench_Units[i].ID, level - 1]--;
-                    Destroy(bench_Units[i].gameObject);
-                    bench_Units.RemoveAt(i);
-                    if (characterLevels[unit.ID, level - 1] == 0) break;
+                    toRemove.Add(bench_Units[i]);
+                    if (toRemove.Count >= 2) break;
                 }
             }
-            if (characterLevels[unit.ID, level - 1] > 0)
+
+            //If not enough bench units were found, search the field and find all
+            //units after the discovered index
+            if (toRemove.Count < 2)
             {
                 for (int i = unitIndex + 1; i < field_Units.Count; i++)
                 {
-                    if (field_Units[i].ID == unit.ID && field_Units[i].level == level)
+                    if (field_Units[i].ID == ID && field_Units[i].level == level)
                     {
-                        Destroy(field_Units[i].gameObject);
-                        field_Units.RemoveAt(i);
-                        characterLevels[unit.ID, level - 1]--;
+                        toRemove.Add(field_Units[i]);
                         break;
                     }
                 }
             }
+
+            //Remove the characters
+            for (int i = 0; i < toRemove.Count; i++)
+            {
+                RemoveCharacter(toRemove[i]);
+            }
+
             return true;
         }
         return false;
@@ -290,37 +297,34 @@ public class Player : MonoBehaviour
 
     //Look specifically at units on the bench while the player is in combat
     //to determine if anything needs an upgrade
-    private bool UpgradeUnitInCombat(Character unit, short level)
+    private bool UpgradeUnitInCombat(short ID, short level)
     {
-        if (characterLevels[unit.ID, level - 1] >= 3 && bench_Units.Count > 0)
+        //If there are bench units, and there's enough units of the particular level
+        if (characterLevels[ID, level - 1] >= 3 && bench_Units.Count > 0)
         {
-            int unitIndex = -1;
-            for (int i = 0; i < bench_Units.Count; i++)
-            {
-                if (bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
-                {
-                    unitIndex = i;
-                    break;
-                }
-            }
-            List<Character> unitsToRemove = new List<Character>();
+            //Find the index on the bench
+            int unitIndex = FindUnitID(bench_Units, ID, level);
+
+            List<Character> toRemove = new List<Character>();
             for (int i = bench_Units.Count - 1; i > unitIndex; i--)
             {
-                if (bench_Units[i].ID == unit.ID && bench_Units[i].level == level)
+                if (bench_Units[i].ID == ID && bench_Units[i].level == level)
                 {
-                    unitsToRemove.Add(bench_Units[i]);
-                    if (unitsToRemove.Count == 2)
+                    //Once enough characters of the particular type and level
+                    //have been discovered, go ahead and remove them and then
+                    //upgrade the units at the particular index
+                    toRemove.Add(bench_Units[i]);
+                    if (toRemove.Count >= 2)
                     {
-                        for (int j = 0; j < unitsToRemove.Count; j++)
+                        for (int j = 0; j < toRemove.Count; j++)
                         {
-                            Destroy(unitsToRemove[j].gameObject);
-                            bench_Units.Remove(unitsToRemove[j]);
-                            characterLevels[unit.ID, level - 1]--;
+                            RemoveCharacter(toRemove[j]);
                         }
+                        characterLevels[ID, level - 1]--;
+                        characterLevels[ID, level]++;
+                        bench_Units[unitIndex].IncrementLevel();
+                        return true;
                     }
-                    bench_Units[unitIndex].IncrementLevel();
-                    characterLevels[unit.ID, level - 1]++;
-                    return true;
                 }
             }
         }
@@ -355,9 +359,8 @@ public class Player : MonoBehaviour
         if (new_Spot.unit == null)
         {
             new_Spot.AddCharacter(character);
-            occupied_Space.Add(new_Spot);
             previous_Space.RemoveCharacter();
-            occupied_Space.Remove(previous_Space);
+
             if (previous_Space.transform.position.z <= -6.5f && new_Spot.transform.position.z > -6.5f)
             {
                 BenchToField(character);
@@ -410,7 +413,6 @@ public class Player : MonoBehaviour
                 character = Instantiate<Character>(characterPrefab, Vector3.zero, Quaternion.identity);
                 bench[i].AddCharacter(character);
                 bench_Units.Insert(i, character);
-                occupied_Space.Add(bench[i]);
                 character.gameObject.SetActive(false);
                 break;
             }
@@ -419,12 +421,12 @@ public class Player : MonoBehaviour
         characterLevels[characterPrefab.ID, 0]++;
         if (!in_Combat)
         {
-            if (UpgradeUnit(characterPrefab, 1)) UpgradeUnit(characterPrefab, 2);
+            if (UpgradeUnit(characterPrefab.ID, 1)) UpgradeUnit(characterPrefab.ID, 2);
             else character.gameObject.SetActive(true);
         }
         else
         {
-            if (UpgradeUnitInCombat(characterPrefab, 1)) UpgradeUnit(characterPrefab, 2);
+            if (UpgradeUnitInCombat(characterPrefab.ID, 1)) UpgradeUnitInCombat(characterPrefab.ID, 2);
             else character.gameObject.SetActive(true);
         }
         return true;
@@ -435,16 +437,7 @@ public class Player : MonoBehaviour
     {
         //Adding units cost to players gold
         gold += unitToSell.gold_Cost;
-        if (bench_Units.Contains(unitToSell))
-        {
-            bench_Units.Remove(unitToSell);
-        }
-        else
-        {
-            FieldToBench(unitToSell);
-            bench_Units.Remove(unitToSell);
-        }
-        Destroy(unit_ToMove.gameObject);
+        RemoveCharacter(unitToSell);
         ResetHeldUnit();
     }
 
@@ -457,13 +450,31 @@ public class Player : MonoBehaviour
         dragging_Unit = false;
     }
 
+    //Remove a character currently being tracked by the player
+    private void RemoveCharacter(Character character)
+    {
+        if (character.grid_Position.y < 4)
+        {
+            grid[(int)character.grid_Position.x, (int)character.grid_Position.y].RemoveCharacter();
+            FieldToBench(character);
+        }
+        else
+        {
+            bench[(int)character.grid_Position.x].RemoveCharacter();
+        }
+        bench_Units.Remove(character);
+        characterLevels[character.ID, character.level - 1]--;
+        Destroy(character.gameObject);
+    }
+
     //When a unit is moved, evaluate the buffs on the current board and
     //change what the player has accordingly
+    //ENSURE THAT YOU UPDATE THE GRID POSITION THIS CHARACTER IS CURRENTLY ON
     protected virtual void BenchToField(Character unit)
     {
         bench_Units.Remove(unit);
         field_Units.Add(unit);
-        bench[(int)unit.grid_Position.x].RemoveCharacter();
+
         foreach (Character c in field_Units)
         {
             if (unit.name == c.name && c != unit)
@@ -483,11 +494,11 @@ public class Player : MonoBehaviour
     //Move a unit from the field to the bench,
     //adding it to the appropriate data structure
     //and updating the synergies
+    //ENSURE THAT YOU UPDATE THE GRID POSITION THIS CHARACTER IS CURRENTLY ON
     protected virtual void FieldToBench(Character unit)
     {
         field_Units.Remove(unit);
         bench_Units.Add(unit);
-        grid[(int)unit.grid_Position.x, (int)unit.grid_Position.y].RemoveCharacter();
 
         foreach (Character c in field_Units)
         {

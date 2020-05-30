@@ -71,12 +71,9 @@ public abstract class Character : MonoBehaviour
         attributes = new List<ATTRIBUTES>();
         healthBar = GetComponentInChildren<Canvas>().transform.GetChild(0).GetComponent<Slider>();
         manaBar = GetComponentInChildren<Canvas>().transform.GetChild(1).GetComponent<Slider>();
-        /*manaBar.value = 0;
-        manaBar.maxValue = 100;
-        healthBar.maxValue = 100;
-        healthBar.value = 100;*/
     }
 
+    //Set the important character stats 
     protected void SetStats(short gold, short _tier, short _level, short _mana, short baseMana, short AD, short SP, float AS, short _health, short AR, short MR, short _range)
     {
         gold_Cost = gold;
@@ -127,7 +124,8 @@ public abstract class Character : MonoBehaviour
         }
     }
 
-    public void CastUltimate()
+    //Cast this unit's ultimate move
+    public virtual void CastUltimate()
     {
         if (mana >= max_Mana)
         {
@@ -146,8 +144,10 @@ public abstract class Character : MonoBehaviour
         manaBar.value += 5;
     }
 
+    //Move the character according to their path
     public bool Moving(int current_Distance)
     {
+        //If the character does not have a path
         if (path == null)
         {
             return false;
@@ -184,6 +184,7 @@ public abstract class Character : MonoBehaviour
         return true;
     }
 
+    //Pass in a new path to be used when moving
     public void AcquirePath(Stack<GridSpace> _path)
     {
         next_Space = _path.Pop();

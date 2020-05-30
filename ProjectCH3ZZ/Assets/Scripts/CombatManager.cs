@@ -56,6 +56,7 @@ public class CombatManager : MonoBehaviour
         combat_Timer += Time.deltaTime;
     }
 
+    //Simulate combat between two players by determining the next action of their units
     private void SimulateCombat(List<Character> fielded_Units, List<Character> enemy_Units)
     {
         //Loop through the first player's units and determine what they should do 
@@ -63,6 +64,8 @@ public class CombatManager : MonoBehaviour
         {
             if (c.target == null)
             {
+                //Find the next target based on the relative distance between 
+                //the enemy and the character
                 float shortestDistance = 0, distance = 0;
                 foreach (Character e in enemy_Units)
                 {
@@ -78,11 +81,13 @@ public class CombatManager : MonoBehaviour
             {
                 int current_Distance = (int)Vector2.Distance(c.grid_Position, c.target.grid_Position);
                 //Debug.Log(c.grid_Position + " " + c.target.grid_Position);
+
+                //Determine if a new path needs to be generated
                 if (!c.Moving(current_Distance) && current_Distance > c.range)
                 {
-                    Debug.Log("Finding Target");
                     FindTarget(c);
                 }
+                //If the character is in range, begin attacking
                 else if (current_Distance <= c.range)
                 {
                     c.CastUltimate();
