@@ -118,10 +118,6 @@ public abstract class Character : MonoBehaviour
         {
             attack_Timer += Time.deltaTime;
         }
-        if (target.health <= 0)
-        {
-            target = null;
-        }
     }
 
     //Cast this unit's ultimate move
