@@ -151,16 +151,16 @@ public abstract class Character : MonoBehaviour
         if (Vector3.Distance(transform.position, next_Space.transform.position) <= 0.1)
         {
             transform.position = next_Space.transform.position;
-
+            //Debug.Log(current_Distance + " " + previous_Distance);
             //If there are no more tiles to follow, or if the distance
             //between the target and this character grows, 
             //Change path
-            if (path.Count == 0 || current_Distance >= previous_Distance)
+            if (path.Count == 0 || current_Distance >= previous_Distance || current_Distance <= range)
             {
                 path = null;
                 return false;
             }
-
+            
             //Get a new space to find
             next_Space.combat_Unit = null;
             next_Space = path.Pop();
@@ -175,6 +175,7 @@ public abstract class Character : MonoBehaviour
             //Add the character to the path
             next_Space.AddCombatCharacter(this);
             previous_Distance = current_Distance;
+            FaceForward();
         }
         transform.position = Vector3.Lerp(transform.position, next_Space.transform.position, 0.1f);
         return true;
@@ -186,5 +187,15 @@ public abstract class Character : MonoBehaviour
         next_Space = _path.Pop();
         next_Space.AddCombatCharacter(this);
         path = _path;
+        previous_Distance = (int)Vector2.Distance(grid_Position, target.grid_Position);
+        FaceForward();
+    }
+
+    private void FaceForward()
+    {
+        Vector2 distance = new Vector2(next_Space.transform.position.x - transform.position.x, next_Space.transform.position.z - transform.position.z);
+        Vector2 forward = new Vector2(transform.forward.x, transform.forward.z);
+        float angle = Mathf.Rad2Deg * Mathf.Acos(Vector2.Dot(distance, forward) / (distance.magnitude * forward.magnitude));
+        transform.Rotate(new Vector3(0, angle, 0));
     }
 }

@@ -36,33 +36,33 @@ public class TestPlayer : Player
         BenchToField(character);
         grid[7, 3].AddCharacter(character);
         
-        character = Instantiate<Character>(characterPrefab);
-        BenchToField(character);
-        grid[6, 3].AddCharacter(character);
-        
-        character = Instantiate<Character>(characterPrefab);
-        BenchToField(character);
-        grid[5, 2].AddCharacter(character);
-        
-        character = Instantiate<Character>(characterPrefab);
-        BenchToField(character);
-        grid[4, 2].AddCharacter(character);
-        
-        character = Instantiate<Character>(characterPrefab);
-        BenchToField(character);
-        grid[3, 1].AddCharacter(character);
-
-        character = Instantiate<Character>(characterPrefab);
-        BenchToField(character);
-        grid[2, 1].AddCharacter(character);
-
-        character = Instantiate<Character>(characterPrefab);
-        BenchToField(character);
-        grid[1, 0].AddCharacter(character);
-        
-        character = Instantiate<Character>(characterPrefab);
-        BenchToField(character);
-        grid[0, 0].AddCharacter(character);
+        //character = Instantiate<Character>(characterPrefab);
+        //BenchToField(character);
+        //grid[6, 3].AddCharacter(character);
+        //
+        //character = Instantiate<Character>(characterPrefab);
+        //BenchToField(character);
+        //grid[5, 2].AddCharacter(character);
+        //
+        //character = Instantiate<Character>(characterPrefab);
+        //BenchToField(character);
+        //grid[4, 2].AddCharacter(character);
+        //
+        //character = Instantiate<Character>(characterPrefab);
+        //BenchToField(character);
+        //grid[3, 1].AddCharacter(character);
+        //
+        //character = Instantiate<Character>(characterPrefab);
+        //BenchToField(character);
+        //grid[2, 1].AddCharacter(character);
+        //
+        //character = Instantiate<Character>(characterPrefab);
+        //BenchToField(character);
+        //grid[1, 0].AddCharacter(character);
+        //
+        //character = Instantiate<Character>(characterPrefab);
+        //BenchToField(character);
+        //grid[0, 0].AddCharacter(character);
     }
 
     public override void Update()

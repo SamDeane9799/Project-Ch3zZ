@@ -44,7 +44,7 @@ public class CombatManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (combat_Timer >= 10)
+        if (combat_Timer >= 5)
         {
             if (!main_Player.in_Combat)
             {

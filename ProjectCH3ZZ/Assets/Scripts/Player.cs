@@ -225,59 +225,48 @@ public class Player : MonoBehaviour
     //on the field
     private bool UpgradeUnit(short ID, short level)
     {
-        //If enough of the unit type exists at the particular level
-        if (characterLevels[ID, level - 1] == 3)
+        //Find the id of the first field unit
+        int unitIndex = FindUnitID(field_Units, ID, level);
+
+        if (unitIndex != -1)
         {
-            //Find the id of the first field unit
-            int unitIndex = FindUnitID(field_Units, ID, level);
-
-            if (unitIndex != -1)
-            {
-                field_Units[unitIndex].IncrementLevel();
-            }
-            //If a field unit of that type does not exist, go ahead and search the bench
-            else
-            {
-                unitIndex = FindUnitID(bench_Units, ID, level);
-                bench_Units[unitIndex].IncrementLevel();
-            }
-            characterLevels[ID, level]++;
-            characterLevels[ID, level - 1]--;
-            List<Character> toRemove = new List<Character>();
-
-            //Search through the bench units and break once enough bench units have
-            //been discovered
-            for (int i = bench_Units.Count - 1; i >= 0; i--)
-            {
-                if (bench_Units[i].ID == ID && bench_Units[i].level == level)
-                {
-                    toRemove.Add(bench_Units[i]);
-                    if (toRemove.Count >= 2) break;
-                }
-            }
-
-            //If not enough bench units were found, search the field and find all
-            //units after the discovered index
-            if (toRemove.Count < 2)
-            {
-                for (int i = unitIndex + 1; i < field_Units.Count; i++)
-                {
-                    if (field_Units[i].ID == ID && field_Units[i].level == level)
-                    {
-                        toRemove.Add(field_Units[i]);
-                        break;
-                    }
-                }
-            }
-
-            //Remove the characters
-            for (int i = 0; i < toRemove.Count; i++)
-            {
-                RemoveCharacter(toRemove[i]);
-            }
-
-            return true;
+            field_Units[unitIndex].IncrementLevel();
         }
+        //If a field unit of that type does not exist, go ahead and search the bench
+        else
+        {
+            unitIndex = FindUnitID(bench_Units, ID, level);
+            bench_Units[unitIndex].IncrementLevel();
+        }
+        characterLevels[ID, level]++;
+        characterLevels[ID, level - 1]--;
+        if (level == 1) characterLevels[ID, level - 1]--;
+
+        //Search through the bench units and break once enough bench units have
+        //been discovered
+        for (int i = bench_Units.Count - 1; i >= 0; i--)
+        {
+            if (bench_Units[i].ID == ID && bench_Units[i].level == level)
+            {
+                RemoveCharacter(bench_Units[i]);
+                if (characterLevels[ID, level - 1] == 0) return true;
+            }
+        }
+
+        //If not enough bench units were found, search the field and find all
+        //units after the discovered index
+        if (characterLevels[ID, level - 1] > 0)
+        {   
+            for (int i = field_Units.Count - 1; i > unitIndex; i++)
+            {
+                if (field_Units[i].ID == ID && field_Units[i].level == level)
+                {
+                    RemoveCharacter(field_Units[i]);
+                    return true;
+                }
+            }
+        }
+
         return false;
     }
 
@@ -285,41 +274,90 @@ public class Player : MonoBehaviour
     //to determine if anything needs an upgrade
     private bool UpgradeUnitInCombat(short ID, short level)
     {
-        //If there are bench units, and there's enough units of the particular level
-        if (characterLevels[ID, level - 1] >= 3 && bench_Units.Count > 0)
-        {
-            //Find the index on the bench
-            int unitIndex = FindUnitID(bench_Units, ID, level);
+        //Find the index on the bench
+        int unitIndex = FindUnitID(bench_Units, ID, level);
+        int initialCount = characterLevels[ID, level - 1];
+        if (level == 1) characterLevels[ID, level - 1]--;
+        List<Character> toRemove = new List<Character>();
 
-            List<Character> toRemove = new List<Character>();
-            for (int i = bench_Units.Count - 1; i > unitIndex; i--)
+        for (int i = bench_Units.Count - 1; i > unitIndex; i--)
+        {
+            if (bench_Units[i].ID == ID && bench_Units[i].level == level)
             {
-                if (bench_Units[i].ID == ID && bench_Units[i].level == level)
+                //Once enough characters of the particular type and level
+                //have been discovered, go ahead and remove them and then
+                //upgrade the units at the particular index
+                toRemove.Add(bench_Units[i]);
+                initialCount++;
+                if (initialCount - characterLevels[ID, level - 1] >= 2)
                 {
-                    //Once enough characters of the particular type and level
-                    //have been discovered, go ahead and remove them and then
-                    //upgrade the units at the particular index
-                    toRemove.Add(bench_Units[i]);
-                    if (toRemove.Count >= 2)
+                    for (int j = 0; j < toRemove.Count; j++)
                     {
-                        for (int j = 0; j < toRemove.Count; j++)
-                        {
-                            RemoveCharacter(toRemove[j]);
-                        }
-                        characterLevels[ID, level - 1]--;
-                        characterLevels[ID, level]++;
-                        bench_Units[unitIndex].IncrementLevel();
-                        return true;
+                        RemoveCharacter(toRemove[j]);
                     }
+                    characterLevels[ID, level - 1]--;
+                    characterLevels[ID, level]++;
+                    bench_Units[unitIndex].IncrementLevel();
+                    return true;
                 }
             }
         }
+
         return false;
+    }
+
+    //Adding a unit to the bench from the shop
+    //After purchasing the units take a look and see if 
+    //the units can be upgraded
+    public bool BuyUnit(Character characterPrefab)
+    {
+        characterLevels[characterPrefab.ID, 0]++;
+        //Check to see if an upgrade can be made in outside of combat
+        if (!in_Combat && characterLevels[characterPrefab.ID, 0] >= 3)
+        {
+            if (UpgradeUnit(characterPrefab.ID, 1))
+            {
+                if (characterLevels[characterPrefab.ID, 1] >= 3) UpgradeUnit(characterPrefab.ID, 2);
+                return true;
+            }
+        }
+        //Check to see if an upgrade can be made during combat
+        else if (characterLevels[characterPrefab.ID, 0] >= 3 && bench_Units.Count > 0)
+        {
+            if (UpgradeUnitInCombat(characterPrefab.ID, 1))
+            {
+                if (characterLevels[characterPrefab.ID, 1] >= 3) UpgradeUnitInCombat(characterPrefab.ID, 2);
+                return true;
+            }
+        }
+
+        Character character = null;
+        for (short i = 0; i < bench.Length; i++)
+        {
+            if (bench[i].unit == null)
+            {
+                character = Instantiate<Character>(characterPrefab, Vector3.zero, Quaternion.identity);
+                bench[i].AddCharacter(character);
+                bench_Units.Insert(i, character);
+                break;
+            }
+        }
+        if (character == null) return false;
+        return true;
+    }
+
+    //Sell a unit by removing all references to it 
+    private void SellUnit(Character unitToSell)
+    {
+        //Adding units cost to players gold
+        gold += unitToSell.gold_Cost;
+        RemoveCharacter(unitToSell);
+        ResetHeldUnit();
     }
     #endregion
 
     #region CLICKING UNITS
-    
+
     //Projects a basic raycast at the given mask
     private bool ProjectRay(LayerMask mask)
     {
@@ -384,47 +422,6 @@ public class Player : MonoBehaviour
             previous_Space.ResetUnitPosition();
             ResetHeldUnit();
         }
-    }
-
-    //Adding a unit to the bench from the shop
-    //After purchasing the units take a look and see if 
-    //the units can be upgraded
-    public bool BuyUnit(Character characterPrefab)
-    {
-        Character character = null;
-        for (short i = 0; i < bench.Length; i++)
-        {
-            if (bench[i].unit == null)
-            {
-                character = Instantiate<Character>(characterPrefab, Vector3.zero, Quaternion.identity);
-                bench[i].AddCharacter(character);
-                bench_Units.Insert(i, character);
-                character.gameObject.SetActive(false);
-                break;
-            }
-        }
-        if (character == null) return false;
-        characterLevels[characterPrefab.ID, 0]++;
-        if (!in_Combat)
-        {
-            if (UpgradeUnit(characterPrefab.ID, 1)) UpgradeUnit(characterPrefab.ID, 2);
-            else character.gameObject.SetActive(true);
-        }
-        else
-        {
-            if (UpgradeUnitInCombat(characterPrefab.ID, 1)) UpgradeUnitInCombat(characterPrefab.ID, 2);
-            else character.gameObject.SetActive(true);
-        }
-        return true;
-    }
-
-    //Sell a unit by removing all references to it 
-    private void SellUnit(Character unitToSell)
-    {
-        //Adding units cost to players gold
-        gold += unitToSell.gold_Cost;
-        RemoveCharacter(unitToSell);
-        ResetHeldUnit();
     }
 
     //Reset the unit being held so that
