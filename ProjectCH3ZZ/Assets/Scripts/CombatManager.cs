@@ -2,21 +2,22 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class CombatManager : MonoBehaviour
+public class CombatManager
 {
-    public Player main_Player;
-    public Player other_Player;
+    // --- COMBAT DATA --- 
+    private Player main_Player;
+    private Player other_Player;
     private GridSpace[,] grid;
     protected const short GRID_WIDTH = 8;
     protected const short GRID_HEIGHT = 4;
-
-    float combat_Timer;
 
     //Setup the grid for combat between the two players
     public void SetCombat(Player main, Player other)
     {
         main_Player = main;
         other_Player = other;
+        main_Player.in_Combat = true;
+        other_Player.in_Combat = true;
         for (short i = 0; i < GRID_HEIGHT; i++)
         {
             for (short j = 0; j < GRID_WIDTH; j++)
@@ -36,26 +37,16 @@ public class CombatManager : MonoBehaviour
     }
 
     // Start is called before the first frame update
-    void Start()
+    public CombatManager()
     {
         grid = new GridSpace[GRID_WIDTH, GRID_HEIGHT * 2];
     }
 
     // Update is called once per frame
-    void Update()
+    public void Update()
     {
-        if (combat_Timer >= 5)
-        {
-            if (!main_Player.in_Combat)
-            {
-                SetCombat(main_Player, other_Player);
-            }
-            main_Player.in_Combat = true;
-            other_Player.in_Combat = true;
-            SimulateCombat(main_Player.field_Units, other_Player.field_Units);
-            SimulateCombat(other_Player.field_Units, main_Player.field_Units);
-        }
-        combat_Timer += Time.deltaTime;
+        SimulateCombat(main_Player.field_Units, other_Player.field_Units);
+        SimulateCombat(other_Player.field_Units, main_Player.field_Units);
     }
 
     //Simulate combat between two players by determining the next action of their units

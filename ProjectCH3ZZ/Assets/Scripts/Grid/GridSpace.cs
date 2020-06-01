@@ -53,6 +53,7 @@ public class GridSpace : MonoBehaviour
     public void ResetUnitPosition()
     {
         unit.transform.position = transform.position;
+        unit.grid_Position = grid_Position;
     }
 
     //Reset the A* data costs of this space

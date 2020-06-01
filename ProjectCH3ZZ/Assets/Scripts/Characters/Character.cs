@@ -36,6 +36,7 @@ public abstract class Character : MonoBehaviour
     [Header("Character Data")]
     public List<ATTRIBUTES> attributes;
     public Vector2 grid_Position;
+    public Vector2 future_Position;
     public short gold_Cost; //Amount of gold required to purchase the character
     public short tier; //Tier related to its frequency in the shop
     public short level; //The level of the unit
@@ -64,7 +65,7 @@ public abstract class Character : MonoBehaviour
     //Information for pathfinding
     protected GridSpace next_Space;
     protected Stack<GridSpace> path;
-    protected int previous_Distance;
+    protected int future_Distance;
 
     public virtual void Awake()
     {
@@ -151,13 +152,20 @@ public abstract class Character : MonoBehaviour
         if (Vector3.Distance(transform.position, next_Space.transform.position) <= 0.1)
         {
             transform.position = next_Space.transform.position;
-            //Debug.Log(current_Distance + " " + previous_Distance);
+            future_Distance = (int)Vector2.Distance(grid_Position, target.grid_Position + target.future_Position);
             //If there are no more tiles to follow, or if the distance
             //between the target and this character grows, 
             //Change path
-            if (path.Count == 0 || current_Distance >= previous_Distance || current_Distance <= range)
+            if (current_Distance <= range)
             {
-                path = null;
+                FaceDirection(new Vector2(target.transform.position.x, target.transform.position.z));
+                ResetPath();
+                return false;
+            }
+            if (path.Count == 0 || current_Distance >= future_Distance)
+            {
+                Debug.Log("here");
+                ResetPath();
                 return false;
             }
             
@@ -168,14 +176,14 @@ public abstract class Character : MonoBehaviour
             //Change path if the next space is occupied
             if (next_Space.combat_Unit != null)
             {
-                path = null;
+                ResetPath();
                 return false;
             }
-
+            
             //Add the character to the path
             next_Space.AddCombatCharacter(this);
-            previous_Distance = current_Distance;
-            FaceForward();
+            future_Position = next_Space.grid_Position;
+            FaceDirection(new Vector2(next_Space.transform.position.x, next_Space.transform.position.z));
         }
         transform.position = Vector3.Lerp(transform.position, next_Space.transform.position, 0.1f);
         return true;
@@ -187,15 +195,37 @@ public abstract class Character : MonoBehaviour
         next_Space = _path.Pop();
         next_Space.AddCombatCharacter(this);
         path = _path;
-        previous_Distance = (int)Vector2.Distance(grid_Position, target.grid_Position);
-        FaceForward();
+        future_Distance = (int)Vector2.Distance(grid_Position, target.grid_Position + target.future_Position);
+        FaceDirection(new Vector2(next_Space.transform.position.x, next_Space.transform.position.z));
     }
 
-    private void FaceForward()
+    //Turn to face a particular point in space
+    private void FaceDirection(Vector2 point)
     {
-        Vector2 distance = new Vector2(next_Space.transform.position.x - transform.position.x, next_Space.transform.position.z - transform.position.z);
+        Vector2 distance = new Vector2(point.x - transform.position.x, point.y - transform.position.z);
         Vector2 forward = new Vector2(transform.forward.x, transform.forward.z);
         float angle = Mathf.Rad2Deg * Mathf.Acos(Vector2.Dot(distance, forward) / (distance.magnitude * forward.magnitude));
+        if (float.IsNaN(angle)) { angle = 90; }
         transform.Rotate(new Vector3(0, angle, 0));
+    }
+
+    //Reset this character's path and make sure other
+    //characters know that this character is no longer moving
+    private void ResetPath()
+    {
+        path = null;
+        future_Position = Vector2.zero;
+    }
+
+    //Reset this character's data
+    public void Reset()
+    {
+        gameObject.SetActive(true);
+        health = maxHealth;
+        healthBar.value = maxHealth;
+        mana = base_Mana;
+        manaBar.value = base_Mana;
+        transform.localRotation = new Quaternion(0,0,0,0);
+        ResetPath();
     }
 }

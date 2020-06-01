@@ -117,17 +117,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 400acc25b6870944aa969eb611d8eb34, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gridPrefab: {fileID: -6412186355024461021, guid: 9fcbe77a96884654e8b35fb5e2fa262c,
-    type: 3}
   level: 2
   gold: 70
   xp: 0
+  in_Combat: 0
+  gridPrefab: {fileID: -6412186355024461021, guid: 9fcbe77a96884654e8b35fb5e2fa262c,
+    type: 3}
+  bench: []
   current_Mods: 
   field_Units: []
   bench_Units: []
   items: []
-  bench: []
-  occupied_Space: []
 --- !u!1 &4747808953584195168
 GameObject:
   m_ObjectHideFlags: 0
@@ -532,8 +532,10 @@ MonoBehaviour:
   - {fileID: 8090857306749836185, guid: 40dedaef58d32bb4e9874b8898840c88, type: 3}
   - {fileID: 6070903215120010821, guid: 504bead0989a3864b887c32ace1d5916, type: 3}
   - {fileID: 3014880549553995856, guid: be06fe36860c49c46aae31dadba9939f, type: 3}
-  tierOneItems: []
-  chances: 
+  tierOneItems:
+  - {fileID: -5026140662352985458, guid: 80d4b3aa1157f5e43917637fccbe1986, type: 3}
+  - {fileID: -6449688566842262554, guid: 2c7466c324306cc4e837f862e06fec75, type: 3}
+  - {fileID: -5797327064218193269, guid: b1ebdc1209a551840a6148e5d391a51c, type: 3}
 --- !u!1 &7129659490146848891
 GameObject:
   m_ObjectHideFlags: 0
