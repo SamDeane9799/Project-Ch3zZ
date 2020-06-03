@@ -242,7 +242,6 @@ public class Player : MonoBehaviour
         }
         characterLevels[ID, level]++;
         characterLevels[ID, level - 1]--;
-        if (level == 1) characterLevels[ID, level - 1]--;
 
         //Search through the bench units and break once enough bench units have
         //been discovered
@@ -259,12 +258,12 @@ public class Player : MonoBehaviour
         //units after the discovered index
         if (characterLevels[ID, level - 1] > 0)
         {   
-            for (int i = field_Units.Count - 1; i > unitIndex; i++)
+            for (int i = field_Units.Count - 1; i > unitIndex; i--)
             {
                 if (field_Units[i].ID == ID && field_Units[i].level == level)
                 {
                     RemoveCharacter(field_Units[i]);
-                    return true;
+                    if (characterLevels[ID, level - 1] == 0) return true;
                 }
             }
         }
@@ -317,6 +316,7 @@ public class Player : MonoBehaviour
         //Check to see if an upgrade can be made in outside of combat
         if (!in_Combat && characterLevels[characterPrefab.ID, 0] >= 3)
         {
+            characterLevels[characterPrefab.ID, 0]--;
             if (UpgradeUnit(characterPrefab.ID, 1))
             {
                 if (characterLevels[characterPrefab.ID, 1] >= 3) UpgradeUnit(characterPrefab.ID, 2);
@@ -828,5 +828,60 @@ public class Player : MonoBehaviour
 
         }
     }
+    #endregion
+
+    #region RESET
+
+    //Reset the player's units after combat
+    public void Reset()
+    {
+        //Reset all of the grid data
+        //as well as each grid space's character data
+        in_Combat = false;
+        for (int i = 0; i < GRID_HEIGHT; i++)
+        {
+            for (int j = 0; j < GRID_WIDTH; j++)
+            {
+                grid[j, i].SetGridPosition(new Vector2(j, i));
+                if (grid[j, i].unit != null)
+                {
+                    grid[j, i].ResetUnitPosition();
+                    grid[j, i].unit.Reset();
+                }
+                else
+                {
+                    grid[j, i].combat_Unit = null;
+                }
+            }
+        }
+
+        //Check to see if any units can be upgraded
+        Dictionary<int, int> checkedIDs = new Dictionary<int, int>();
+        List<short> toUpgrade = new List<short>();
+        for (int i = 0; i < bench_Units.Count; i++)
+        {
+            if (!checkedIDs.ContainsKey(bench_Units[i].ID))
+            {
+                checkedIDs.Add(bench_Units[i].ID, 1);
+                if (characterLevels[bench_Units[i].ID, 0] >= 3 || characterLevels[bench_Units[i].ID, 1] >= 3)
+                {
+                    toUpgrade.Add(bench_Units[i].ID);
+                }
+            }
+        }
+        for (int i = 0; i < toUpgrade.Count; i++)
+        {
+            if (characterLevels[toUpgrade[i], 0] >= 3)
+            {
+                if (UpgradeUnit(toUpgrade[i], 1) && characterLevels[toUpgrade[i], 1] >= 3)
+                    UpgradeUnit(toUpgrade[i], 2);
+            }
+            else
+            {
+                UpgradeUnit(toUpgrade[i], 2);
+            }
+        }
+    }
+
     #endregion
 }
