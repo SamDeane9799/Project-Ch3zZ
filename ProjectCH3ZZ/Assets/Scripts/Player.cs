@@ -30,6 +30,7 @@ public class Player : MonoBehaviour
     protected Text synergiesText;
     protected const short GRID_WIDTH = 8;
     protected const short GRID_HEIGHT = 4;
+    private Camera playerCamera;
 
     // --- ITEM DATA ---
     [Header("Item Data")]
@@ -58,6 +59,7 @@ public class Player : MonoBehaviour
     {
         //Initialize important stuff i guess
         p_Attributes = new Dictionary<ATTRIBUTES, short>();
+        playerCamera = GetComponent<Camera>();
         current_Mods = new CHARACTER_MODIFIER[19]; //Number of possible mods
         characterLevels = new short[53, 3]; //Number of characters and possible levels
         field_Units = new List<Character>();
@@ -361,7 +363,7 @@ public class Player : MonoBehaviour
     //Projects a basic raycast at the given mask
     private bool ProjectRay(LayerMask mask)
     {
-        Ray direction = Camera.main.ScreenPointToRay(Input.mousePosition);
+        Ray direction = playerCamera.ScreenPointToRay(Input.mousePosition);
         return Physics.Raycast(direction, out hit, 1000, mask);
     }
 

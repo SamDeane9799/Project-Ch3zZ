@@ -33,6 +33,7 @@ public class Shop : MonoBehaviour
         //By using getchild we can find the gameObject that refers to different elements like Player level, xp slider, and player currency
         //All we have to do is pass in the index of the object in the getChild method to get a reference to its GameObject
         mainCamera = Camera.main;
+        player = transform.parent.GetComponent<Player>();
         itemsInShop = new List<ShopItem>();
         itemChoices = new List<ItemUIElement>();
         levelText = transform.GetChild(2).transform.GetChild(2).GetComponent<Text>();
