@@ -81,6 +81,8 @@ namespace Mirror
                 {
                     if (GUILayout.Button("Host (Server + Client)"))
                     {
+                        GetComponent<Camera>().enabled = false;
+                        GetComponent<AudioListener>().enabled = false;
                         manager.StartHost();
                     }
                 }
@@ -89,6 +91,7 @@ namespace Mirror
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Client"))
                 {
+                    GetComponent<Camera>().enabled = false;
                     manager.StartClient();
                 }
                 manager.networkAddress = GUILayout.TextField(manager.networkAddress);

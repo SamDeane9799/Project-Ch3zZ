@@ -2,8 +2,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ItemUIElement : MonoBehaviour
+namespace Mirror
 {
-    public ITEMNAME itemName;
-    public Item itemPrefab;
+    public class ItemUIElement : MonoBehaviour
+    {
+        public ITEMNAME itemName;
+        public Item itemPrefab;
+    }
 }

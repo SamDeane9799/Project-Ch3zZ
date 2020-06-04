@@ -2,113 +2,126 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-enum GAME_PHASE
+namespace Mirror
 {
-    PREPARATION,
-    COMBAT,
-    ITEM,
-    CHANGE,
-}
-
-
-public class GameManager : MonoBehaviour
-{
-    [Header("Player Data")]
-    // --- PLAYER DATA --- 
-    public Player player_Prefab;
-    public TestPlayer test_Prefab;
-    private List<Player> players;
-    private List<CombatManager> combat;
-    
-    // --- GAME PHASE DATA ---
-    private GAME_PHASE current_Phase;
-    private GAME_PHASE previous_Phase;
-    private float phase_Timer;
-    private short round;
-    private const float PREPARATION_TIME = 10;
-    private const float ITEM_TIME = 20;
-    private const float PHASE_CHANGE_TIME = 5;
-    private const float COMBAT_TIME = 10;
-
-    // Start is called before the first frame update
-    void Start()
+    enum GAME_PHASE
     {
-        players = new List<Player>();
-        combat = new List<CombatManager>();
-        for (int i = 0; i < 1; i++)
-        {
-            combat.Add(new CombatManager());
-        }
-
-        players.Add(Instantiate(player_Prefab));
-        players.Add(Instantiate(test_Prefab));
-        current_Phase = GAME_PHASE.PREPARATION;
+        PREPARATION,
+        COMBAT,
+        ITEM,
+        CHANGE,
     }
 
-    // Update is called once per frame
-    void Update()
+    public class GameManager : NetworkManager
     {
-        //Check the current phase of the game
-        switch (current_Phase)
+        [Header("Player Data")]
+        // --- PLAYER DATA --- 
+        public Player player_Prefab;
+        public TestPlayer test_Prefab;
+        private List<Player> players;
+        private List<CombatManager> combat;
+
+        // --- GAME PHASE DATA ---
+        private GAME_PHASE current_Phase;
+        private GAME_PHASE previous_Phase;
+        private float phase_Timer;
+        private short round;
+        private const float PREPARATION_TIME = 10;
+        private const float ITEM_TIME = 20;
+        private const float PHASE_CHANGE_TIME = 5;
+        private const float COMBAT_TIME = 10;
+
+        // Start is called before the first frame update
+        public override void Start()
         {
-            case GAME_PHASE.PREPARATION: //Preparation of the game
-                if (phase_Timer >= PREPARATION_TIME)
-                {
-                    PhaseChange();
-                }
-                break;
-            case GAME_PHASE.COMBAT: //Combat phase
-                foreach (CombatManager c in combat)
-                {
-                    c.Update();
-                }
-                if (phase_Timer >= COMBAT_TIME)
-                {
-                    PhaseChange();
-                }
-                break;
-            case GAME_PHASE.CHANGE: //Brief change phase 
-                if (phase_Timer >= PHASE_CHANGE_TIME)
-                {
-                    switch (previous_Phase)
+            base.Start();
+            players = new List<Player>();
+            combat = new List<CombatManager>();
+            for (int i = 0; i < 1; i++)
+            {
+                combat.Add(new CombatManager());
+            }
+
+            //players.Add(Instantiate(player_Prefab));
+            //players.Add(Instantiate(test_Prefab));
+            current_Phase = GAME_PHASE.PREPARATION;
+        }
+
+        // Update is called once per frame
+        void Update()
+        {
+            //Check the current phase of the game
+            switch (current_Phase)
+            {
+                case GAME_PHASE.PREPARATION: //Preparation of the game
+                    if (phase_Timer >= PREPARATION_TIME)
                     {
-                        case GAME_PHASE.PREPARATION:
-                            current_Phase = GAME_PHASE.COMBAT;
-                            combat[0].SetCombat(players[0], players[1]);
-                            break;
-                        case GAME_PHASE.COMBAT:
-                            foreach (Player p in players)
-                            {
-                                p.Reset();
-                            }
-                            current_Phase = GAME_PHASE.PREPARATION;
-                            round++;
-                            break;
-                        case GAME_PHASE.ITEM:
-                            current_Phase = GAME_PHASE.PREPARATION;
-                            break;
+                        PhaseChange();
                     }
-                    phase_Timer = 0;
-                }
-                break;
-            case GAME_PHASE.ITEM: //Item phase
-                if (phase_Timer >= ITEM_TIME)
-                {
-                    PhaseChange();
-                }
-                break;
+                    break;
+                case GAME_PHASE.COMBAT: //Combat phase
+                    foreach (CombatManager c in combat)
+                    {
+                        //c.Update();
+                    }
+                    if (phase_Timer >= COMBAT_TIME)
+                    {
+                        PhaseChange();
+                    }
+                    break;
+                case GAME_PHASE.CHANGE: //Brief change phase 
+                    if (phase_Timer >= PHASE_CHANGE_TIME)
+                    {
+                        switch (previous_Phase)
+                        {
+                            case GAME_PHASE.PREPARATION:
+                                current_Phase = GAME_PHASE.COMBAT;
+                                //combat[0].SetCombat(players[0], players[1]);
+                                break;
+                            case GAME_PHASE.COMBAT:
+                                foreach (Player p in players)
+                                {
+                                    p.Reset();
+                                }
+                                current_Phase = GAME_PHASE.PREPARATION;
+                                round++;
+                                break;
+                            case GAME_PHASE.ITEM:
+                                current_Phase = GAME_PHASE.PREPARATION;
+                                break;
+                        }
+                        phase_Timer = 0;
+                    }
+                    break;
+                case GAME_PHASE.ITEM: //Item phase
+                    if (phase_Timer >= ITEM_TIME)
+                    {
+                        PhaseChange();
+                    }
+                    break;
+            }
+            phase_Timer += Time.deltaTime;
         }
-        phase_Timer += Time.deltaTime;
-    }
 
-    //Change the phase of the game
-    //and reset the timer
-    private void PhaseChange()
-    {
-        Debug.Log(current_Phase);
-        previous_Phase = current_Phase;
-        current_Phase = GAME_PHASE.CHANGE;
-        phase_Timer = 0;
+        //Change the phase of the game
+        //and reset the timer
+        private void PhaseChange()
+        {
+            Debug.Log(current_Phase);
+            previous_Phase = current_Phase;
+            current_Phase = GAME_PHASE.CHANGE;
+            phase_Timer = 0;
+        }
+
+        public override void OnServerAddPlayer(NetworkConnection conn)
+        {
+            Transform startPos = GetStartPosition();
+            Player player = startPos != null
+                ? Instantiate(player_Prefab, startPos.position, startPos.rotation)
+                : Instantiate(player_Prefab);
+
+            NetworkServer.AddPlayerForConnection(conn, player.gameObject);
+            players.Add(player);           
+        }
     }
 }
-

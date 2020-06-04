@@ -2,8 +2,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ShopItem : MonoBehaviour
+namespace Mirror
 {
-    public short cost;
-    public Character characterPrefab;
+    public class ShopItem : MonoBehaviour
+    {
+        public short cost;
+        public GameObject characterPrefab;
+    }
 }

@@ -2,18 +2,21 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Helveller : Character
+namespace Mirror
 {
-    // Start is called before the first frame update
-    public override void Awake()
+    public class Helveller : Character
     {
-        base.Awake();
-        attributes.Add(global::ATTRIBUTES.FELWALKER);
-        attributes.Add(ATTRIBUTES.BLIGHTCRAFTER);
-        ID = 2;
-    }
+        // Start is called before the first frame update
+        public override void Awake()
+        {
+            base.Awake();
+            attributes.Add(ATTRIBUTES.FELWALKER);
+            attributes.Add(ATTRIBUTES.BLIGHTCRAFTER);
+            ID = 2;
+        }
 
-    public override void Ultimate()
-    {
+        public override void Ultimate()
+        {
+        }
     }
 }

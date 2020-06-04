@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public static class Data
+namespace Mirror
 {
-    public static List<short[]> rollChancesByLevel = new List<short[]>()
+    public static class Data
+    {
+        public static List<short[]> rollChancesByLevel = new List<short[]>()
     {
         new short[5]{100, 0, 0, 0, 0 },
         new short[5]{75, 25, 0, 0, 0 },
@@ -15,14 +17,15 @@ public static class Data
         new short[5]{14, 20, 35, 25, 6 },
         new short[5]{10, 15, 25, 35, 15 }
     };
-    public static List<short> requiredXP = new List<short>()
+        public static List<short> requiredXP = new List<short>()
     {
         2, 6, 16, 20, 32, 50, 66
     };
-    public static List<ITEMNAME> tierOneItems = new List<ITEMNAME>()
+        public static List<ITEMNAME> tierOneItems = new List<ITEMNAME>()
     {
         ITEMNAME.jaggedBlade,
         ITEMNAME.siphoner
     };
-    public static short itemSpriteSideLength = 50;
+        public static short itemSpriteSideLength = 50;
+    }
 }
