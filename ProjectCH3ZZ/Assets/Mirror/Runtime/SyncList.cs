@@ -35,6 +35,7 @@ namespace Mirror
         protected override bool DeserializeItem(NetworkReader reader) => reader.ReadBoolean();
     }
 
+
     [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class SyncList<T> : IList<T>, IReadOnlyList<T>, SyncObject
     {

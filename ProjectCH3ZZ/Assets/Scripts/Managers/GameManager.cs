@@ -20,6 +20,7 @@ namespace Mirror
         public TestPlayer test_Prefab;
         private List<Player> players;
         private List<CombatManager> combat;
+        public List<GameObject> characterPrefabs;
 
         // --- GAME PHASE DATA ---
         private GAME_PHASE current_Phase;

@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Mirror
 {
-    public class GridSpace : MonoBehaviour
+    public class GridSpace : NetworkBehaviour
     {
         // --- GRID DATA ---
         [Header("Grid Data")]

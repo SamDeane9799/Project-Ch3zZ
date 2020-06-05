@@ -31,12 +31,13 @@ namespace Mirror
         ZEALOT,
     }
     //Basic outline for the character class
-    public abstract class Character : MonoBehaviour
+    public abstract class Character : NetworkBehaviour
     {
         #region CHARACTER_STATS
         // --- CHARACTER DATA ---
         [Header("Character Data")]
         public List<ATTRIBUTES> attributes;
+        [SyncVar]
         public Vector2 grid_Position;
         public Vector2 future_Position;
         public short gold_Cost; //Amount of gold required to purchase the character

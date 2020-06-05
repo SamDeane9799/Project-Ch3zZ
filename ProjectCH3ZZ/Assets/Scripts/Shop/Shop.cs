@@ -109,13 +109,10 @@ namespace Mirror
             ShopItem itemToPurchase = UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<ShopItem>();
             short costOfItem = itemToPurchase.cost;
             //Check if player has room on bench
-            if (costOfItem >= player.gold) return;
+            if (costOfItem > player.gold) return;
 
-            player.charToSpawn = itemToPurchase.characterPrefab;
-            player.CmdBuyUnit();
 
-            Debug.Log(player.purchased);
-            if (player.purchased)
+            if (player.BuyUnit(itemToPurchase))
             {
                 player.gold -= costOfItem;
                 itemsInShop.Remove(itemToPurchase);

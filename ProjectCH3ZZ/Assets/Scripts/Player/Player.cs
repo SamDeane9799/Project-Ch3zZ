@@ -34,8 +34,6 @@ namespace Mirror
         protected const short GRID_WIDTH = 8;
         protected const short GRID_HEIGHT = 4;
         private Camera playerCamera;
-        public GameObject charToSpawn;
-        public bool purchased;
 
         // --- ITEM DATA ---
         [Header("Item Data")]
@@ -45,6 +43,7 @@ namespace Mirror
         // --- SHOP DATA ---
         protected Canvas playerCanvas;
         protected Shop playerShop;
+        public List<GameObject> characterPrefabs;
 
         //Variables for moving various units around
         protected GameObject unit_ToMove;
@@ -63,7 +62,6 @@ namespace Mirror
         public virtual void Start()
         {
             //Initialize important stuff i guess
-            //spawnManager = GameObject.Find("SpawnManager").GetComponent<SpawnManager>();
             p_Attributes = new Dictionary<ATTRIBUTES, short>();
             playerCamera = GetComponent<Camera>();
             current_Mods = new CHARACTER_MODIFIER[19]; //Number of possible mods
@@ -109,6 +107,7 @@ namespace Mirror
         {
             if (isLocalPlayer)
             {
+                
                 //Check if the player is holding a unit
                 if (dragging_Unit)
                 {
@@ -176,6 +175,9 @@ namespace Mirror
                     {
                         //Find the space occupied by the character
                         Character character = hit.transform.gameObject.GetComponent<Character>();
+
+                        Debug.Log(character.GetComponent<NetworkIdentity>().hasAuthority);
+                        if (!character.GetComponent<NetworkIdentity>().hasAuthority) return;
                         if (character.grid_Position.y == GRID_HEIGHT) previous_Space = bench[(int)character.grid_Position.x];
                         else previous_Space = grid[(int)character.grid_Position.x, (int)character.grid_Position.y];
                         unit_ToMove = previous_Space.unit.gameObject;
@@ -189,6 +191,11 @@ namespace Mirror
                     }
                 }
             }
+        }
+
+        [Command]
+        public void CmdMoveCharacter()
+        { 
         }
 
         // --- HELPER METHODS ---
@@ -324,30 +331,26 @@ namespace Mirror
         //Adding a unit to the bench from the shop
         //After purchasing the units take a look and see if 
         //the units can be upgraded
-        [Command]
-        public void CmdBuyUnit()
+        public bool BuyUnit(ShopItem charToSpawn)
         {
-            Character charComp = charToSpawn.GetComponent<Character>();
-            characterLevels[charComp.ID, 0]++;
+            characterLevels[charToSpawn.unitID, 0]++;
             //Check to see if an upgrade can be made in outside of combat
-            if (!in_Combat && characterLevels[charComp.ID, 0] >= 3)
+            if (!in_Combat && characterLevels[charToSpawn.unitID, 0] >= 3)
             {
-                characterLevels[charComp.ID, 0]--;
-                if (UpgradeUnit(charComp.ID, 1))
+                characterLevels[charToSpawn.unitID, 0]--;
+                if (UpgradeUnit(charToSpawn.unitID, 1))
                 {
-                    if (characterLevels[charComp.ID, 1] >= 3) UpgradeUnit(charComp.ID, 2);
-                    purchased = true;
-                    return;
+                    if (characterLevels[charToSpawn.unitID, 1] >= 3) UpgradeUnit(charToSpawn.unitID, 2);
+                    return true;
                 }
             }
             //Check to see if an upgrade can be made during combat
-            else if (characterLevels[charComp.ID, 0] >= 3 && bench_Units.Count > 0)
+            else if (characterLevels[charToSpawn.unitID, 0] >= 3 && bench_Units.Count > 0)
             {
-                if (UpgradeUnitInCombat(charComp.ID, 1))
+                if (UpgradeUnitInCombat(charToSpawn.unitID, 1))
                 {
-                    if (characterLevels[charComp.ID, 1] >= 3) UpgradeUnitInCombat(charComp.ID, 2);
-                    purchased = true;
-                    return;
+                    if (characterLevels[charToSpawn.unitID, 1] >= 3) UpgradeUnitInCombat(charToSpawn.unitID, 2);
+                    return true;
                 }
             }
 
@@ -355,18 +358,23 @@ namespace Mirror
             for (short i = 0; i < bench.Length; i++)
             {
                 if (bench[i].unit == null)
-                {
-
-                    GameObject character = Instantiate(charToSpawn);
-                    Character charComponent = character.GetComponent<Character>();
-                    bench[i].AddCharacter(charComponent);
-                    bench_Units.Insert(i, charComponent);
-                    NetworkServer.Spawn(character);
-                    purchased = true;
-                    return;
+                {                                        
+                    CmdSpawnUnit(i, charToSpawn.unitID);
+                    return true;
                 }
             }
-            purchased = false;
+            return false;
+        }
+
+        [Command]
+        public void CmdSpawnUnit(int benchIndex, int unitID)
+        {
+            GameObject go = Instantiate(characterPrefabs[unitID - 1]);
+            Character charComponent = go.GetComponent<Character>();
+            bench[benchIndex].AddCharacter(charComponent);
+            bench_Units.Insert(benchIndex, charComponent);
+            NetworkServer.Spawn(go);
+            go.GetComponent<NetworkIdentity>().AssignClientAuthority(connectionToClient);
         }
 
         //Sell a unit by removing all references to it 

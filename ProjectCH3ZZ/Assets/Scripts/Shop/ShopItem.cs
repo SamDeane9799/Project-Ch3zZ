@@ -7,6 +7,6 @@ namespace Mirror
     public class ShopItem : MonoBehaviour
     {
         public short cost;
-        public GameObject characterPrefab;
+        public short unitID;
     }
 }
