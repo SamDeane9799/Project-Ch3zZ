@@ -15,8 +15,8 @@ namespace Mirror
         public override void Start()
         {
             p_Attributes = new Dictionary<ATTRIBUTES, short>();
-            field_Units = new List<Character>();
-            bench_Units = new List<Character>();
+            field_Units = new SyncListCharacter();
+            bench_Units = new SyncListCharacter();
             current_Mods = new CHARACTER_MODIFIER[19]; //Number of possible mods
 
             grid = new GridSpace[8, 4];
@@ -36,35 +36,35 @@ namespace Mirror
 
             Character character = Instantiate<Character>(characterPrefab);
             BenchToField(character);
-            grid[7, 3].AddCharacter(character);
+            grid[7, 3].CmdAddCharacter(character);
 
             //character = Instantiate<Character>(characterPrefab);
             //BenchToField(character);
-            //grid[6, 3].AddCharacter(character);
+            //grid[6, 3].CmdAddCharacter(character);
             //
             //character = Instantiate<Character>(characterPrefab);
             //BenchToField(character);
-            //grid[5, 2].AddCharacter(character);
+            //grid[5, 2].CmdAddCharacter(character);
             //
             //character = Instantiate<Character>(characterPrefab);
             //BenchToField(character);
-            //grid[4, 2].AddCharacter(character);
+            //grid[4, 2].CmdAddCharacter(character);
             //
             //character = Instantiate<Character>(characterPrefab);
             //BenchToField(character);
-            //grid[3, 1].AddCharacter(character);
+            //grid[3, 1].CmdAddCharacter(character);
             //
             //character = Instantiate<Character>(characterPrefab);
             //BenchToField(character);
-            //grid[2, 1].AddCharacter(character);
+            //grid[2, 1].CmdAddCharacter(character);
             //
             //character = Instantiate<Character>(characterPrefab);
             //BenchToField(character);
-            //grid[1, 0].AddCharacter(character);
+            //grid[1, 0].CmdAddCharacter(character);
             //
             //character = Instantiate<Character>(characterPrefab);
             //BenchToField(character);
-            //grid[0, 0].AddCharacter(character);
+            //grid[0, 0].CmdAddCharacter(character);
         }
 
         public override void Update()

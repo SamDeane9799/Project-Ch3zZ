@@ -26,7 +26,7 @@ namespace Mirror
         private GAME_PHASE current_Phase;
         private GAME_PHASE previous_Phase;
         private float phase_Timer;
-        private short round;
+        private short round;        
         private const float PREPARATION_TIME = 10;
         private const float ITEM_TIME = 20;
         private const float PHASE_CHANGE_TIME = 5;
@@ -114,6 +114,7 @@ namespace Mirror
             phase_Timer = 0;
         }
 
+        
         public override void OnServerAddPlayer(NetworkConnection conn)
         {
             Transform startPos = GetStartPosition();

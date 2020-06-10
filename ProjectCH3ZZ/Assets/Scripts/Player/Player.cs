@@ -10,25 +10,32 @@ namespace Mirror
     {
         // --- PLAYER DATA ---
         [Header("Player Data")]
+        [SyncVar]
         public short level; //The player's current level, equivalent to the amount of units they can have
+        [SyncVar]
         public short gold; //The amount of gold a player currently has
+        [SyncVar]
         public short xp;
+        [SyncVar]
         public bool in_Combat;
+        [SyncVar]
         private PLAYER_MODIFIER player_Mod;
 
         // --- GRID DATA ---
         [Header("Grid Data")]
         public GridSpace gridPrefab;
+        [SyncVar]
         public GridSpace[,] grid;
         public GridSpace[] bench;
         private float benchZPosition;
 
         // --- CHARACTER DATA ---
         [Header("Character Data")]
+        //Needs to be synced
         public CHARACTER_MODIFIER[] current_Mods;
         protected Dictionary<ATTRIBUTES, short> p_Attributes;
-        public List<Character> field_Units; //All units on the field
-        public List<Character> bench_Units; //All units on the bench
+        public SyncListCharacter field_Units; //All units on the field
+        public SyncListCharacter bench_Units; //All units on the bench
         public short[,] characterLevels; //The amount of a particular character at a certain level
         protected Text synergiesText;
         protected const short GRID_WIDTH = 8;
@@ -37,6 +44,7 @@ namespace Mirror
 
         // --- ITEM DATA ---
         [Header("Item Data")]
+        //Needs to be synced
         public List<Item> items;
         protected Vector3 previousItemSpot;
 
@@ -66,8 +74,8 @@ namespace Mirror
             playerCamera = GetComponent<Camera>();
             current_Mods = new CHARACTER_MODIFIER[19]; //Number of possible mods
             characterLevels = new short[53, 3]; //Number of characters and possible levels
-            field_Units = new List<Character>();
-            bench_Units = new List<Character>();
+            field_Units = new SyncListCharacter();
+            bench_Units = new SyncListCharacter();
             benchZPosition = transform.position.z + 6;
 
             synergiesText = transform.GetChild(0).GetChild(3).GetComponent<Text>();
@@ -92,13 +100,13 @@ namespace Mirror
                 for (short j = 0; j < GRID_WIDTH; j++)
                 {
                     grid[j, i] = Instantiate<GridSpace>(gridPrefab, new Vector3(transform.position.x + j - 4, 0, transform.position.z + 8 + (i % GRID_HEIGHT)), Quaternion.identity);
-                    grid[j, i].SetGridPosition(new Vector2(j, i));
+                    grid[j, i].CmdSetGridPosition(new Vector2(j, i));
                 }
             }
             for (short i = 0; i < GRID_WIDTH; i++)
             {
                 bench[i] = Instantiate<GridSpace>(gridPrefab, new Vector3(transform.position.x + i - 4, 0, transform.position.z + 6), Quaternion.identity);
-                bench[i].SetGridPosition(new Vector2(i, GRID_HEIGHT));
+                bench[i].CmdSetGridPosition(new Vector2(i, GRID_HEIGHT));
             }
         }
 
@@ -138,7 +146,7 @@ namespace Mirror
                             //If the raycast hits nothing we want to place the unit in its original position and reset the held unit
                             else
                             {
-                                previous_Space.ResetUnitPosition();
+                                previous_Space.CmdResetUnitPosition();
                                 ResetHeldUnit();
                             }
                         }
@@ -230,7 +238,7 @@ namespace Mirror
 
         //Method to determine if a unit with a valid ID exists in the 
         //given context
-        private int FindUnitID(List<Character> units, short ID, short level)
+        private int FindUnitID(SyncListCharacter units, short ID, short level)
         {
             for (int i = 0; i < units.Count; i++)
             {
@@ -371,11 +379,18 @@ namespace Mirror
         {
             GameObject go = Instantiate(characterPrefabs[unitID - 1]);
             Character charComponent = go.GetComponent<Character>();
-            bench[benchIndex].AddCharacter(charComponent);
+            bench[benchIndex].CmdAddCharacter(charComponent);
             bench_Units.Insert(benchIndex, charComponent);
             NetworkServer.Spawn(go);
             go.GetComponent<NetworkIdentity>().AssignClientAuthority(connectionToClient);
+           
         }
+
+/*        [ClientRpc]
+        public void RpcAddUnitToBench(Character charToAdd, int benchIndex)
+        {
+            
+        }*/
 
         //Sell a unit by removing all references to it 
         private void SellUnit(Character unitToSell)
@@ -414,8 +429,8 @@ namespace Mirror
         {
             if (new_Spot.unit == null)
             {
-                new_Spot.AddCharacter(character);
-                previous_Space.RemoveCharacter();
+                new_Spot.CmdAddCharacter(character);
+                previous_Space.CmdRemoveCharacter();
 
                 if (previous_Space.transform.position.z <= benchZPosition && new_Spot.transform.position.z > benchZPosition)
                 {
@@ -444,14 +459,14 @@ namespace Mirror
                     FieldToBench(previous_Unit);
                 }
 
-                new_Spot.AddCharacter(previous_Unit);
-                previous_Space.AddCharacter(character);
+                new_Spot.CmdAddCharacter(previous_Unit);
+                previous_Space.CmdAddCharacter(character);
 
                 ResetHeldUnit();
             }
             else
             {
-                previous_Space.ResetUnitPosition();
+                previous_Space.CmdResetUnitPosition();
                 ResetHeldUnit();
             }
         }
@@ -470,12 +485,12 @@ namespace Mirror
         {
             if (character.grid_Position.y < 4)
             {
-                grid[(int)character.grid_Position.x, (int)character.grid_Position.y].RemoveCharacter();
+                grid[(int)character.grid_Position.x, (int)character.grid_Position.y].CmdRemoveCharacter();
                 FieldToBench(character);
             }
             else
             {
-                bench[(int)character.grid_Position.x].RemoveCharacter();
+                bench[(int)character.grid_Position.x].CmdRemoveCharacter();
             }
             bench_Units.Remove(character);
             characterLevels[character.ID, character.level - 1]--;
@@ -872,10 +887,10 @@ namespace Mirror
             {
                 for (int j = 0; j < GRID_WIDTH; j++)
                 {
-                    grid[j, i].SetGridPosition(new Vector2(j, i));
+                    grid[j, i].CmdSetGridPosition(new Vector2(j, i));
                     if (grid[j, i].unit != null)
                     {
-                        grid[j, i].ResetUnitPosition();
+                        grid[j, i].CmdResetUnitPosition();
                         grid[j, i].unit.Reset();
                     }
                     else

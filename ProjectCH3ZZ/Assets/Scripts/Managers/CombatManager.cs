@@ -25,7 +25,7 @@ namespace Mirror
                 for (short j = 0; j < GRID_WIDTH; j++)
                 {
                     grid[j, i] = main_Player.grid[j, i];
-                    grid[j, i].SetGridPosition(new Vector2(j, i));
+                    grid[j, i].CmdSetGridPosition(new Vector2(j, i));
                 }
             }
             for (short i = 0; i < GRID_HEIGHT; i++)
@@ -33,7 +33,7 @@ namespace Mirror
                 for (short j = 0; j < GRID_WIDTH; j++)
                 {
                     grid[j, i + 4] = other_Player.grid[j, i];
-                    grid[j, i + 4].SetGridPosition(new Vector2(j, i + 4));
+                    grid[j, i + 4].CmdSetGridPosition(new Vector2(j, i + 4));
                 }
             }
         }
@@ -52,7 +52,7 @@ namespace Mirror
         }
 
         //Simulate combat between two players by determining the next action of their units
-        private void SimulateCombat(List<Character> fielded_Units, List<Character> enemy_Units)
+        private void SimulateCombat(SyncListCharacter fielded_Units, SyncListCharacter enemy_Units)
         {
             //Loop through the first player's units and determine what they should do 
             foreach (Character c in fielded_Units)
@@ -80,7 +80,8 @@ namespace Mirror
                         //Debug.Log(c.grid_Position + " " + c.target.grid_Position);
 
                         //Determine if a new path needs to be generated
-                        if (!c.Moving(current_Distance) && current_Distance > c.range)
+                        c.CmdMoving(current_Distance);
+                        if (!c.isMoving && current_Distance > c.range)
                         {
                             FindTarget(c);
                         }
@@ -88,7 +89,7 @@ namespace Mirror
                         else if (current_Distance <= c.range)
                         {
                             c.CastUltimate();
-                            c.Attack();
+                            c.CmdAttack();
                             if (c.target.health <= 0)
                             {
                                 grid[(int)c.target.grid_Position.x, (int)c.target.grid_Position.y].combat_Unit = null;
@@ -151,7 +152,7 @@ namespace Mirror
 
             //Set the character's path and first tile to begin the pathfinding
             grid[(int)character.grid_Position.x, (int)character.grid_Position.y].combat_Unit = null;
-            character.AcquirePath(path);
+            character.CmdAcquirePath(path);
         }
 
         //Add an element to the open list, sorting it by position relative to its
@@ -178,7 +179,7 @@ namespace Mirror
             {
                 for (short j = 0; j < 8; j++)
                 {
-                    grid[j, i].ResetCosts();
+                    grid[j, i].CmdResetCosts();
                 }
             }
 

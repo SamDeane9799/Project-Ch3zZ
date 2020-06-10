@@ -5,7 +5,6 @@ using UnityEngine.UI;
 
 namespace Mirror
 {
-
     public enum ATTRIBUTES
     {
         BEAST,
@@ -31,13 +30,13 @@ namespace Mirror
         ZEALOT,
     }
     //Basic outline for the character class
+    [System.Serializable]
     public abstract class Character : NetworkBehaviour
     {
         #region CHARACTER_STATS
         // --- CHARACTER DATA ---
         [Header("Character Data")]
         public List<ATTRIBUTES> attributes;
-        [SyncVar]
         public Vector2 grid_Position;
         public Vector2 future_Position;
         public short gold_Cost; //Amount of gold required to purchase the character
@@ -48,7 +47,7 @@ namespace Mirror
         public short base_Mana; //Amount of mana a character begins the game with
         public short attack_Damage; //Damage dealt per auto attack
         public short spell_Power; //Amplification of the effect of ultimates
-        public float attack_Speed; //How fast a character attacks
+        public double attack_Speed; //How fast a character attacks
         public short maxHealth;
         public short health; //Amount of health a character has
         public short armor; //Resistance to physical damage
@@ -59,7 +58,8 @@ namespace Mirror
 
         //Information for attacking
         public Character target;
-        protected float attack_Timer = 0.0f;
+        [SyncVar]
+        protected double attack_Timer = 0.0f;
 
         // --- UI DATA ---
         protected Slider healthBar;
@@ -69,12 +69,15 @@ namespace Mirror
         protected GridSpace next_Space;
         protected Stack<GridSpace> path;
         protected int future_Distance;
+        [SyncVar]
+        public bool isMoving;
 
         public virtual void Awake()
         {
             attributes = new List<ATTRIBUTES>();
             healthBar = GetComponentInChildren<Canvas>().transform.GetChild(0).GetComponent<Slider>();
             manaBar = GetComponentInChildren<Canvas>().transform.GetChild(1).GetComponent<Slider>();
+            isMoving = false;
         }
 
         //Set the important character stats 
@@ -111,7 +114,8 @@ namespace Mirror
         //Return whether or not a character can attack
         //If so, reset the attack timer and return true,
         //otherwise increment the timer and return false
-        public void Attack()
+        [Command]
+        public void CmdAttack()
         {
             if (attack_Timer >= 1.0f / attack_Speed)
             {
@@ -145,12 +149,14 @@ namespace Mirror
         }
 
         //Move the character according to their path
-        public bool Moving(int current_Distance)
+        [Command]
+        public void CmdMoving(int current_Distance)
         {
             //If the character does not have a path
             if (path == null)
             {
-                return false;
+                isMoving = false;
+                return;
             }
             if (Vector3.Distance(transform.position, next_Space.transform.position) <= 0.1)
             {
@@ -161,15 +167,16 @@ namespace Mirror
                 //Change path
                 if (current_Distance <= range)
                 {
-                    FaceDirection(new Vector2(target.transform.position.x, target.transform.position.z));
-                    ResetPath();
-                    return false;
+                    CmdFaceDirection(new Vector2(target.transform.position.x, target.transform.position.z));
+                    CmdResetPath();
+                    isMoving = false;
+                    return;
                 }
                 if (path.Count == 0 || current_Distance >= future_Distance)
                 {
-                    Debug.Log("here");
-                    ResetPath();
-                    return false;
+                    CmdResetPath();
+                    isMoving = false;
+                    return;
                 }
 
                 //Get a new space to find
@@ -179,31 +186,34 @@ namespace Mirror
                 //Change path if the next space is occupied
                 if (next_Space.combat_Unit != null)
                 {
-                    ResetPath();
-                    return false;
+                    CmdResetPath();
+                    isMoving = false;
+                    return;
                 }
 
                 //Add the character to the path
-                next_Space.AddCombatCharacter(this);
+                next_Space.CmdAddCombatCharacter(this);
                 future_Position = next_Space.grid_Position;
-                FaceDirection(new Vector2(next_Space.transform.position.x, next_Space.transform.position.z));
+                CmdFaceDirection(new Vector2(next_Space.transform.position.x, next_Space.transform.position.z));
             }
             transform.position = Vector3.Lerp(transform.position, next_Space.transform.position, 0.1f);
-            return true;
+            isMoving = true;
         }
 
         //Pass in a new path to be used when moving
-        public void AcquirePath(Stack<GridSpace> _path)
+        [Command]
+        public void CmdAcquirePath(Stack<GridSpace> _path)
         {
             next_Space = _path.Pop();
-            next_Space.AddCombatCharacter(this);
+            next_Space.CmdAddCombatCharacter(this);
             path = _path;
             future_Distance = (int)Vector2.Distance(grid_Position, target.grid_Position + target.future_Position);
-            FaceDirection(new Vector2(next_Space.transform.position.x, next_Space.transform.position.z));
+            CmdFaceDirection(new Vector2(next_Space.transform.position.x, next_Space.transform.position.z));
         }
 
         //Turn to face a particular point in space
-        private void FaceDirection(Vector2 point)
+        [Command]
+        private void CmdFaceDirection(Vector2 point)
         {
             Vector2 distance = new Vector2(point.x - transform.position.x, point.y - transform.position.z);
             Vector2 forward = new Vector2(transform.forward.x, transform.forward.z);
@@ -214,7 +224,8 @@ namespace Mirror
 
         //Reset this character's path and make sure other
         //characters know that this character is no longer moving
-        private void ResetPath()
+        [Command]
+        private void CmdResetPath()
         {
             path = null;
             future_Position = Vector2.zero;
@@ -229,7 +240,286 @@ namespace Mirror
             mana = base_Mana;
             manaBar.value = base_Mana;
             transform.localRotation = new Quaternion(0, 0, 0, 0);
-            ResetPath();
+            CmdResetPath();
         }
+
+        public override bool OnSerialize(NetworkWriter writer, bool initialState)
+        {
+            base.OnSerialize(writer, initialState);
+            if(initialState)
+            {
+                //First time data is sent to the client/Server
+                writer.WriteVector2(grid_Position);
+                writer.WriteVector2(future_Position);
+                writer.WriteInt16(gold_Cost);
+                writer.WriteInt16(tier);
+                writer.WriteInt16(level);
+                writer.WriteInt16(mana);
+                writer.WriteInt16(max_Mana);
+                writer.WriteInt16(base_Mana);
+                writer.WriteInt16(attack_Damage);
+                writer.WriteInt16(spell_Power);
+                writer.WriteDouble(attack_Speed);
+                writer.WriteInt16(maxHealth);
+                writer.WriteInt16(armor);
+                writer.WriteInt16(magic_Resistance);
+                writer.WriteInt16(range);
+                writer.WriteInt16(ID);
+
+                writer.WriteDouble(attack_Timer);
+            }
+
+            bool wroteSyncVar = false;
+            if((base.syncVarDirtyBits & 1u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteVector2(grid_Position);
+            }
+
+            if ((base.syncVarDirtyBits & 2u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteVector2(future_Position);
+            }
+
+            if ((base.syncVarDirtyBits & 4u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteInt16(level);
+            }
+
+            if ((base.syncVarDirtyBits & 8u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteInt16(mana);
+            }
+
+            if ((base.syncVarDirtyBits & 16u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteInt16(max_Mana);
+            }
+
+            if ((base.syncVarDirtyBits & 32u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteInt16(base_Mana);
+            }
+            if ((base.syncVarDirtyBits & 64u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteInt16(attack_Damage);
+            }
+            if ((base.syncVarDirtyBits & 128u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteInt16(spell_Power);
+            }
+            if ((base.syncVarDirtyBits & 256u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteDouble(attack_Speed);
+            }
+            if ((base.syncVarDirtyBits & 512u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteInt16(maxHealth);
+            }
+            if ((base.syncVarDirtyBits & 1024u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteInt16(health);
+            }
+            if ((base.syncVarDirtyBits & 2048u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteInt16(armor);
+            }
+            if ((base.syncVarDirtyBits & 4096u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteInt16(magic_Resistance);
+            }
+            if ((base.syncVarDirtyBits & 8192u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteInt16(range);
+            }
+            if ((base.syncVarDirtyBits & 16384u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteDouble(attack_Timer);
+            }
+            if ((base.syncVarDirtyBits & 32768u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteBoolean(isMoving);
+            }
+            if (!wroteSyncVar)
+            {
+                writer.WritePackedInt32(0);
+            }
+
+            return wroteSyncVar;
+        }
+
+        public override void OnDeserialize(NetworkReader reader, bool initialState)
+        {
+            if(initialState)
+            {
+                this.grid_Position = reader.ReadVector2();
+                this.future_Position = reader.ReadVector2();
+                this.gold_Cost = reader.ReadInt16();
+                this.tier = reader.ReadInt16();
+                this.level = reader.ReadInt16();
+                this.mana = reader.ReadInt16();
+                this.max_Mana = reader.ReadInt16();
+                this.base_Mana = reader.ReadInt16();
+                this.attack_Damage = reader.ReadInt16();
+                this.spell_Power = reader.ReadInt16();
+                this.attack_Speed = reader.ReadDouble();
+                this.maxHealth = reader.ReadInt16();
+                this.health = reader.ReadInt16();
+                this.armor = reader.ReadInt16();
+                this.magic_Resistance = reader.ReadInt16();
+                this.range = reader.ReadInt16();
+                this.ID = reader.ReadInt16();
+                this.attack_Timer = reader.ReadDouble();
+            }
+            int num = (int)reader.ReadPackedUInt32();
+            if((num & 1) != 0)
+            {
+                this.grid_Position = reader.ReadVector2();
+            }
+            if ((num & 2) != 0)
+            {
+                this.future_Position = reader.ReadVector2();
+            }
+            if ((num & 4) != 0)
+            {
+                this.level = reader.ReadInt16();
+            }
+            if ((num & 8) != 0)
+            {
+                this.mana = reader.ReadInt16();
+            }
+            if ((num & 16) != 0)
+            {
+                this.max_Mana = reader.ReadInt16();
+            }
+            if ((num & 32) != 0)
+            {
+                this.base_Mana = reader.ReadInt16();
+            }
+            if ((num & 64) != 0)
+            {
+                this.attack_Damage = reader.ReadInt16();
+            }
+            if ((num & 128) != 0)
+            {
+                this.spell_Power = reader.ReadInt16();
+            }
+            if ((num & 256) != 0)
+            {
+                this.attack_Speed = reader.ReadDouble();
+            }
+            if ((num & 512) != 0)
+            {
+                this.maxHealth = reader.ReadInt16();
+            }
+            if ((num & 1028) != 0)
+            {
+                this.health = reader.ReadInt16();
+            }
+            if ((num & 2048) != 0)
+            {
+                this.armor = reader.ReadInt16();
+            }
+            if ((num & 4096) != 0)
+            {
+                this.magic_Resistance = reader.ReadInt16();
+            }
+            if ((num & 8192) != 0)
+            {
+                this.range = reader.ReadInt16();
+            }
+            if ((num & 16384) != 0)
+            {
+                this.attack_Timer = reader.ReadDouble();
+            }
+            if((num & 32768) != 0)
+            {
+                this.isMoving = reader.ReadBoolean();
+            }
+        }
+    }
+
+    [System.Serializable]
+    public class SyncListCharacter : SyncList<Character>
+    {
     }
 }
