@@ -22,17 +22,17 @@ namespace Mirror
             grid = new GridSpace[8, 4];
             bench = new GridSpace[8];
 
-            for (short i = 0; i < 4; i++)
+            /*for (short i = 0; i < 4; i++)
             {
                 for (short j = 0; j < 8; j++)
                 {
-                    grid[j, i] = Instantiate<GridSpace>(gridPrefab, new Vector3(j - 3.5f, 5, i - 1f), Quaternion.identity);
+                    grid[j, i] = Instantiate<GameObject>(gridPrefab, new Vector3(j - 3.5f, 5, i - 1f), Quaternion.identity);
                 }
             }
             for (short i = 0; i < 8; i++)
             {
-                bench[i] = Instantiate<GridSpace>(gridPrefab, new Vector3(i - 3.5f, 5, 3.5f), Quaternion.identity);
-            }
+                bench[i] = Instantiate<GameObject>(gridPrefab, new Vector3(i - 3.5f, 5, 3.5f), Quaternion.identity);
+            }*/
 
             Character character = Instantiate<Character>(characterPrefab);
             BenchToField(character);

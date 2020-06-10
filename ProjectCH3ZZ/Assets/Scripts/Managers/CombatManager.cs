@@ -137,7 +137,7 @@ namespace Mirror
         //take by checking the parents of each tile in the grid
         private void CalculatePath(Character character, Vector2 target)
         {
-            Stack<GridSpace> path = new Stack<GridSpace>();
+            SyncStackGridSpace path = new SyncStackGridSpace();
             int x = (int)target.x;
             int y = (int)target.y;
 

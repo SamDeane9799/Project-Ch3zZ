@@ -23,8 +23,8 @@ namespace Mirror
 
         // --- GRID DATA ---
         [Header("Grid Data")]
-        public GridSpace gridPrefab;
-        [SyncVar]
+        public GameObject gridPrefab;
+        //[SyncVar]
         public GridSpace[,] grid;
         public GridSpace[] bench;
         private float benchZPosition;
@@ -66,6 +66,7 @@ namespace Mirror
         protected List<RaycastResult> ui_Results;
         protected EventSystem m_Eventsystem;
 
+
         // Start is called before the first frame update
         public virtual void Start()
         {
@@ -93,26 +94,12 @@ namespace Mirror
                 GetComponent<AudioListener>().enabled = true;
                 playerCamera.enabled = true;
             }
-
-            //Initialize the player's grid
-            for (short i = 0; i < GRID_HEIGHT; i++)
-            {
-                for (short j = 0; j < GRID_WIDTH; j++)
-                {
-                    grid[j, i] = Instantiate<GridSpace>(gridPrefab, new Vector3(transform.position.x + j - 4, 0, transform.position.z + 8 + (i % GRID_HEIGHT)), Quaternion.identity);
-                    grid[j, i].CmdSetGridPosition(new Vector2(j, i));
-                }
-            }
-            for (short i = 0; i < GRID_WIDTH; i++)
-            {
-                bench[i] = Instantiate<GridSpace>(gridPrefab, new Vector3(transform.position.x + i - 4, 0, transform.position.z + 6), Quaternion.identity);
-                bench[i].CmdSetGridPosition(new Vector2(i, GRID_HEIGHT));
-            }
         }
 
         //CALLED EVERY FRAME
         public virtual void Update()
         {
+            
             if (isLocalPlayer)
             {
                 
@@ -201,9 +188,41 @@ namespace Mirror
             }
         }
 
-        [Command]
+        public void SetUpPlayerGrid()
+        {
+            for (short i = 0; i < GRID_HEIGHT; i++)
+            {
+                for (short j = 0; j < GRID_WIDTH; j++)
+                {
+                    CmdSpawnGrid(j, i);
+                }
+            }
+            for (short i = 0; i < GRID_WIDTH; i++)
+            {
+                CmdSpawnBench(i);
+            }
+        }
+
+       /* [Command]
         public void CmdMoveCharacter()
         { 
+        }*/
+
+        [Command]
+        public void CmdSpawnGrid(int j, int i)
+        {
+            GameObject gridSpot = Instantiate<GameObject>(gridPrefab, new Vector3(transform.position.x + j - 4, 0, transform.position.z + 8 + (i % GRID_HEIGHT)), Quaternion.identity);
+            grid[j, i] = gridSpot.GetComponent<GridSpace>();
+            grid[j, i].CmdSetGridPosition(new Vector2(j, i));
+            NetworkServer.Spawn(gridSpot);
+        }
+        [Command]
+        public void CmdSpawnBench(int i)
+        {
+            GameObject gridSpot = Instantiate<GameObject>(gridPrefab, new Vector3(transform.position.x + i - 4, 0, transform.position.z + 6), Quaternion.identity);
+            bench[i] = gridSpot.GetComponent<GridSpace>();
+            NetworkServer.Spawn(gridSpot);
+            bench[i].CmdSetGridPosition(new Vector2(i, GRID_HEIGHT));
         }
 
         // --- HELPER METHODS ---
@@ -929,5 +948,6 @@ namespace Mirror
         }
 
         #endregion
+
     }
 }

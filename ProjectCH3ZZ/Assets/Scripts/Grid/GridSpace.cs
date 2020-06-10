@@ -72,11 +72,103 @@ namespace Mirror
             h = int.MaxValue;
             f = int.MaxValue;
         }
+
+        public override bool OnSerialize(NetworkWriter writer, bool initialState)
+        {
+            base.OnSerialize(writer, initialState);
+            if (!initialState)
+            {
+                writer.WriteCharacter(unit);
+                writer.WriteCharacter(combat_Unit);
+                writer.WriteVector2(grid_Position);
+            }
+
+            bool wroteSyncVar = false;
+            if((base.syncVarDirtyBits & 1u) != 0u)
+            {
+                if(!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteCharacter(unit);
+            }
+            if ((base.syncVarDirtyBits & 2u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteCharacter(combat_Unit);
+            }
+            if ((base.syncVarDirtyBits & 4u) != 0u)
+            {
+                if (!wroteSyncVar)
+                {
+                    writer.WritePackedUInt64(base.syncVarDirtyBits);
+                    wroteSyncVar = true;
+                }
+                writer.WriteVector2(grid_Position);
+            }
+            if (!wroteSyncVar)
+            {
+                writer.WritePackedInt32(0);
+            }
+            return wroteSyncVar;
+        }
+
+        public override void OnDeserialize(NetworkReader reader, bool initialState)
+        {
+            base.OnDeserialize(reader, initialState);
+            if(initialState)
+            {
+                this.unit = reader.ReadCharacter();
+                this.combat_Unit = reader.ReadCharacter();
+                this.grid_Position = reader.ReadVector2();
+            }
+
+            int num = (int)reader.ReadPackedUInt32();
+            if((num & 1) != 0)
+            {
+                this.unit = reader.ReadCharacter();
+            }
+            if((num & 2) != 0)
+            {
+                this.combat_Unit = reader.ReadCharacter();
+            }
+            if((num & 4) != 0)
+            {
+                this.grid_Position = reader.ReadVector2();
+            }
+        }
     }
 
     [System.Serializable]
     public class SyncListGridSpace : SyncList<GridSpace>
     {
         public GridSpace[] grid;
+    }
+
+    [System.Serializable]
+    public class SyncStackGridSpace : SyncList<GridSpace>
+    {
+        //public List<GridSpace> grid;
+
+        public void Push(GridSpace g)
+        {
+            this.Add(g);
+        }
+
+        public GridSpace Pop()
+        {
+            GridSpace removed = this[this.Count - 1];
+            this.RemoveAt(this.Count - 1);
+            return removed;
+        }
+        public GridSpace Peek(GridSpace g)
+        {
+            return this[this.Count - 1];
+        }
     }
 }

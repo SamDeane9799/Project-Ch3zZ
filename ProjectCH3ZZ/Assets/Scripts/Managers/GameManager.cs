@@ -114,7 +114,7 @@ namespace Mirror
             phase_Timer = 0;
         }
 
-        
+
         public override void OnServerAddPlayer(NetworkConnection conn)
         {
             Transform startPos = GetStartPosition();
@@ -123,7 +123,8 @@ namespace Mirror
                 : Instantiate(player_Prefab);
 
             NetworkServer.AddPlayerForConnection(conn, player.gameObject);
-            players.Add(player);           
+            players.Add(player);
+
         }
     }
 }

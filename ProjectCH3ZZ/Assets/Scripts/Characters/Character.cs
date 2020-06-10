@@ -58,8 +58,7 @@ namespace Mirror
 
         //Information for attacking
         public Character target;
-        [SyncVar]
-        protected double attack_Timer = 0.0f;
+        public double attack_Timer = 0.0f;
 
         // --- UI DATA ---
         protected Slider healthBar;
@@ -67,9 +66,8 @@ namespace Mirror
 
         //Information for pathfinding
         protected GridSpace next_Space;
-        protected Stack<GridSpace> path;
+        protected SyncStackGridSpace path;
         protected int future_Distance;
-        [SyncVar]
         public bool isMoving;
 
         public virtual void Awake()
@@ -202,7 +200,7 @@ namespace Mirror
 
         //Pass in a new path to be used when moving
         [Command]
-        public void CmdAcquirePath(Stack<GridSpace> _path)
+        public void CmdAcquirePath(SyncStackGridSpace _path)
         {
             next_Space = _path.Pop();
             next_Space.CmdAddCombatCharacter(this);

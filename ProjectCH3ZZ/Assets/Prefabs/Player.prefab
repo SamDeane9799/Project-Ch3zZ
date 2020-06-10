@@ -434,12 +434,10 @@ MonoBehaviour:
   gold: 5
   xp: 0
   in_Combat: 0
-  gridPrefab: {fileID: -6412186355024461021, guid: 9fcbe77a96884654e8b35fb5e2fa262c,
+  gridPrefab: {fileID: 1198929948884820417, guid: 9fcbe77a96884654e8b35fb5e2fa262c,
     type: 3}
   bench: []
   current_Mods: 
-  field_Units: []
-  bench_Units: []
   items: []
   characterPrefabs:
   - {fileID: 0}
