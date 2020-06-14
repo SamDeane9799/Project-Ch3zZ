@@ -24,8 +24,8 @@ namespace Mirror
         // --- GRID DATA ---
         [Header("Grid Data")]
         public GameObject gridPrefab;
-        //[SyncVar]
         public GridSpace[,] grid;
+        [SyncVar]
         public GridSpace[] bench;
         private float benchZPosition;
 
@@ -87,22 +87,21 @@ namespace Mirror
             ui_Results = new List<RaycastResult>();
             m_Eventsystem = GetComponent<EventSystem>();
 
-            grid = new GridSpace[GRID_WIDTH, GRID_HEIGHT];
-            bench = new GridSpace[GRID_WIDTH];
+           
             if (isLocalPlayer)
             {
                 GetComponent<AudioListener>().enabled = true;
                 playerCamera.enabled = true;
             }
+
+
         }
 
         //CALLED EVERY FRAME
         public virtual void Update()
         {
-            
             if (isLocalPlayer)
             {
-                
                 //Check if the player is holding a unit
                 if (dragging_Unit)
                 {
@@ -190,39 +189,35 @@ namespace Mirror
 
         public void SetUpPlayerGrid()
         {
+
+            grid = new GridSpace[GRID_WIDTH, GRID_HEIGHT];
+            bench = new GridSpace[GRID_WIDTH];
             for (short i = 0; i < GRID_HEIGHT; i++)
             {
                 for (short j = 0; j < GRID_WIDTH; j++)
                 {
-                    CmdSpawnGrid(j, i);
+                    SpawnGrid(j, i);
                 }
             }
             for (short i = 0; i < GRID_WIDTH; i++)
             {
-                CmdSpawnBench(i);
+                SpawnBench(i);
             }
         }
 
-       /* [Command]
-        public void CmdMoveCharacter()
-        { 
-        }*/
-
-        [Command]
-        public void CmdSpawnGrid(int j, int i)
+        public void SpawnGrid(int j, int i)
         {
             GameObject gridSpot = Instantiate<GameObject>(gridPrefab, new Vector3(transform.position.x + j - 4, 0, transform.position.z + 8 + (i % GRID_HEIGHT)), Quaternion.identity);
             grid[j, i] = gridSpot.GetComponent<GridSpace>();
-            grid[j, i].CmdSetGridPosition(new Vector2(j, i));
+            grid[j, i].SetGridPosition(new Vector2(j, i));
             NetworkServer.Spawn(gridSpot);
         }
-        [Command]
-        public void CmdSpawnBench(int i)
+        public void SpawnBench(int i)
         {
             GameObject gridSpot = Instantiate<GameObject>(gridPrefab, new Vector3(transform.position.x + i - 4, 0, transform.position.z + 6), Quaternion.identity);
             bench[i] = gridSpot.GetComponent<GridSpace>();
             NetworkServer.Spawn(gridSpot);
-            bench[i].CmdSetGridPosition(new Vector2(i, GRID_HEIGHT));
+            bench[i].GetComponent<GridSpace>().SetGridPosition(new Vector2(i, GRID_HEIGHT));
         }
 
         // --- HELPER METHODS ---
@@ -385,24 +380,22 @@ namespace Mirror
             for (short i = 0; i < bench.Length; i++)
             {
                 if (bench[i].unit == null)
-                {                                        
-                    CmdSpawnUnit(i, charToSpawn.unitID);
+                {
+                    SpawnUnit(i, charToSpawn.unitID);
                     return true;
                 }
             }
             return false;
         }
 
-        [Command]
-        public void CmdSpawnUnit(int benchIndex, int unitID)
+        public void SpawnUnit(int benchIndex, int unitID)
         {
             GameObject go = Instantiate(characterPrefabs[unitID - 1]);
             Character charComponent = go.GetComponent<Character>();
-            bench[benchIndex].CmdAddCharacter(charComponent);
+            bench[benchIndex].GetComponent<GridSpace>().CmdAddCharacter(charComponent);
             bench_Units.Insert(benchIndex, charComponent);
             NetworkServer.Spawn(go);
             go.GetComponent<NetworkIdentity>().AssignClientAuthority(connectionToClient);
-           
         }
 
 /*        [ClientRpc]
@@ -906,7 +899,7 @@ namespace Mirror
             {
                 for (int j = 0; j < GRID_WIDTH; j++)
                 {
-                    grid[j, i].CmdSetGridPosition(new Vector2(j, i));
+                    grid[j, i].SetGridPosition(new Vector2(j, i));
                     if (grid[j, i].unit != null)
                     {
                         grid[j, i].CmdResetUnitPosition();

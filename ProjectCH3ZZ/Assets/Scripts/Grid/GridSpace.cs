@@ -22,8 +22,7 @@ namespace Mirror
 
         //Set the position of the space, to be used when updating grid space for combat
         //and whatnot
-        [Command]
-        public void CmdSetGridPosition(Vector2 pos)
+        public void SetGridPosition(Vector2 pos)
         {
             grid_Position = pos;
             if (unit != null) unit.grid_Position = pos;
@@ -76,15 +75,13 @@ namespace Mirror
         public override bool OnSerialize(NetworkWriter writer, bool initialState)
         {
             base.OnSerialize(writer, initialState);
-            if (!initialState)
-            {
-                writer.WriteCharacter(unit);
-                writer.WriteCharacter(combat_Unit);
+            if (initialState)
+            {                
                 writer.WriteVector2(grid_Position);
             }
 
             bool wroteSyncVar = false;
-            if((base.syncVarDirtyBits & 1u) != 0u)
+            if((base.syncVarDirtyBits & 1u) != 0u && unit != null)
             {
                 if(!wroteSyncVar)
                 {
@@ -93,7 +90,7 @@ namespace Mirror
                 }
                 writer.WriteCharacter(unit);
             }
-            if ((base.syncVarDirtyBits & 2u) != 0u)
+            if ((base.syncVarDirtyBits & 2u) != 0u && combat_Unit != null)
             {
                 if (!wroteSyncVar)
                 {
@@ -123,8 +120,6 @@ namespace Mirror
             base.OnDeserialize(reader, initialState);
             if(initialState)
             {
-                this.unit = reader.ReadCharacter();
-                this.combat_Unit = reader.ReadCharacter();
                 this.grid_Position = reader.ReadVector2();
             }
 
@@ -152,9 +147,7 @@ namespace Mirror
 
     [System.Serializable]
     public class SyncStackGridSpace : SyncList<GridSpace>
-    {
-        //public List<GridSpace> grid;
-
+    {        
         public void Push(GridSpace g)
         {
             this.Add(g);
@@ -170,5 +163,11 @@ namespace Mirror
         {
             return this[this.Count - 1];
         }
+    }
+
+    [System.Serializable]
+    public class SyncBench: SyncList<GridSpace>
+    {
+        
     }
 }

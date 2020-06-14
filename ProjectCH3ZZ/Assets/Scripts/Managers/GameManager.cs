@@ -16,7 +16,7 @@ namespace Mirror
     {
         [Header("Player Data")]
         // --- PLAYER DATA --- 
-        public Player player_Prefab;
+        public GameObject player_Prefab;
         public TestPlayer test_Prefab;
         private List<Player> players;
         private List<CombatManager> combat;
@@ -118,13 +118,13 @@ namespace Mirror
         public override void OnServerAddPlayer(NetworkConnection conn)
         {
             Transform startPos = GetStartPosition();
-            Player player = startPos != null
+            GameObject player = startPos != null
                 ? Instantiate(player_Prefab, startPos.position, startPos.rotation)
                 : Instantiate(player_Prefab);
 
             NetworkServer.AddPlayerForConnection(conn, player.gameObject);
-            players.Add(player);
-
+            players.Add(player.GetComponent<Player>());
+            players[players.Count - 1].SetUpPlayerGrid();
         }
     }
 }

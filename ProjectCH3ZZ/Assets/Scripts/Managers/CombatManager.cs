@@ -25,7 +25,7 @@ namespace Mirror
                 for (short j = 0; j < GRID_WIDTH; j++)
                 {
                     grid[j, i] = main_Player.grid[j, i];
-                    grid[j, i].CmdSetGridPosition(new Vector2(j, i));
+                    grid[j, i].SetGridPosition(new Vector2(j, i));
                 }
             }
             for (short i = 0; i < GRID_HEIGHT; i++)
@@ -33,7 +33,7 @@ namespace Mirror
                 for (short j = 0; j < GRID_WIDTH; j++)
                 {
                     grid[j, i + 4] = other_Player.grid[j, i];
-                    grid[j, i + 4].CmdSetGridPosition(new Vector2(j, i + 4));
+                    grid[j, i + 4].SetGridPosition(new Vector2(j, i + 4));
                 }
             }
         }
