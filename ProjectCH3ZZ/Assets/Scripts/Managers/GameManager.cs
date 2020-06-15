@@ -125,8 +125,9 @@ namespace Mirror
 
             NetworkServer.AddPlayerForConnection(conn, player);
             players.Add(player.GetComponent<Player>());
-            players[players.Count - 1].RpcSetUpPlayerGrid();
-            players[players.Count - 1].ServerSetUpPlayer();
+            /*players[players.Count - 1].BenchSetup += players[players.Count - 1].SetBenchSpot;
+            players[players.Count - 1].GridSetup += players[players.Count - 1].SetGridSpot;
+            players[players.Count - 1].ServerSetUpPlayer();*/
         }
     }
 }

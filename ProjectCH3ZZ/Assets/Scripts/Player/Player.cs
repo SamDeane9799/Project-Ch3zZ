@@ -70,6 +70,7 @@ namespace Mirror
         public virtual void Start()
         {
             //Initialize important stuff i guess
+            
             p_Attributes = new Dictionary<ATTRIBUTES, short>();
             playerCamera = GetComponent<Camera>();
             current_Mods = new CHARACTER_MODIFIER[19]; //Number of possible mods
@@ -86,12 +87,14 @@ namespace Mirror
             ui_Results = new List<RaycastResult>();
             m_Eventsystem = GetComponent<EventSystem>();
 
-           
             if (isLocalPlayer)
             {
                 GetComponent<AudioListener>().enabled = true;
                 playerCamera.enabled = true;
             }
+
+            if(isLocalPlayer)CmdSetUpPlayerGrid();
+
         }
 
         //CALLED EVERY FRAME
@@ -184,57 +187,49 @@ namespace Mirror
             }
         }
         
-        public void ServerSetUpPlayer()
+        [ClientRpc]
+        private void RpcCreateBoard()
         {
             grid = new GridSpace[GRID_WIDTH, GRID_HEIGHT];
             bench = new GridSpace[GRID_WIDTH];
-            for (short i = 0; i < GRID_HEIGHT; i++)
-            {
-                for (short j = 0; j < GRID_WIDTH; j++)
-                {
-                    GameObject gridSpot = Instantiate<GameObject>(gridPrefab, new Vector3(transform.position.x + j - 4, 0, transform.position.z + 8 + (i % GRID_HEIGHT)), Quaternion.identity);
-                    grid[j, i] = gridSpot.GetComponent<GridSpace>();
-                    grid[j, i].SetGridPosition(new Vector2(j, i));
-                    NetworkServer.Spawn(gridSpot, connectionToClient);
-                }
-            }
+        }
+
+        [Command]
+        public void CmdSetUpPlayerGrid()
+        {
+            grid = new GridSpace[GRID_WIDTH, GRID_HEIGHT];
+            bench = new GridSpace[GRID_WIDTH];
+            RpcCreateBoard();
             for (short i = 0; i < GRID_WIDTH; i++)
             {
-                GameObject gridSpot = Instantiate<GameObject>(gridPrefab, new Vector3(transform.position.x + i - 4, 0, transform.position.z + 6), Quaternion.identity);
-                bench[i] = gridSpot.GetComponent<GridSpace>();
-                bench[i].GetComponent<GridSpace>().SetGridPosition(new Vector2(i, GRID_HEIGHT));
-                NetworkServer.Spawn(gridSpot, connectionToClient);
+                GameObject benchSpot = Instantiate<GameObject>(gridPrefab, new Vector3(transform.position.x + i - 4, 0, transform.position.z + 6), Quaternion.identity);
+                NetworkServer.Spawn(benchSpot, connectionToClient);
+                RpcSetBenchSpot(i, benchSpot);
+                bench[i] = benchSpot.GetComponent<GridSpace>();
+                bench[i].SetGridPosition(new Vector2(i, GRID_HEIGHT));
+                for (short j = 0; j < GRID_HEIGHT; j++)
+                {
+                    GameObject gridSpot = Instantiate<GameObject>(gridPrefab, new Vector3(transform.position.x + i - 4, 0, transform.position.z + 8 + (j % GRID_HEIGHT)), Quaternion.identity);
+                    NetworkServer.Spawn(gridSpot, connectionToClient);
+                    RpcSetGridSpot(i, j, gridSpot);
+                    grid[i, j] = gridSpot.GetComponent<GridSpace>();
+                    grid[i, j].SetGridPosition(new Vector2(i, j));
+                }
             }
         }
 
         [ClientRpc]
-        public void RpcSetUpPlayerGrid()
+        public void RpcSetGridSpot(int i, int j, GameObject gridSpot)
         {
-            grid = new GridSpace[GRID_WIDTH, GRID_HEIGHT];
-            bench = new GridSpace[GRID_WIDTH];
-            for (short i = 0; i < GRID_HEIGHT; i++)
-            {
-                for (short j = 0; j < GRID_WIDTH; j++)
-                {
-                    SetGridSpot(j, i);
-                }
-            }
-            for (short i = 0; i < GRID_WIDTH; i++)
-            {
-                SetBenchSpot(i);
-            }
+            grid[i, j] = gridSpot.GetComponent<GridSpace>();
+            grid[i, j].SetGridPosition(new Vector2(i, j));
         }
-        public void SetGridSpot(int j, int i)
-        {
 
-            GameObject gridSpot = Instantiate<GameObject>(gridPrefab, new Vector3(transform.position.x + j - 4, 0, transform.position.z + 8 + (i % GRID_HEIGHT)), Quaternion.identity);
-            grid[j, i] = gridSpot.GetComponent<GridSpace>();
-            grid[j, i].SetGridPosition(new Vector2(j, i));
-        }
-        public void SetBenchSpot(int i)
-        {
 
-            GameObject gridSpot = Instantiate<GameObject>(gridPrefab, new Vector3(transform.position.x + i - 4, 0, transform.position.z + 6), Quaternion.identity);
+
+        [ClientRpc]
+        public void RpcSetBenchSpot(int i, GameObject gridSpot)
+        {
             bench[i] = gridSpot.GetComponent<GridSpace>();
             bench[i].GetComponent<GridSpace>().SetGridPosition(new Vector2(i, GRID_HEIGHT));
         }
@@ -396,7 +391,7 @@ namespace Mirror
             }
 
             //GameObject character = null;
-            Debug.Log(bench.Length);
+            Debug.Log(grid[0, 0]);
             for (short i = 0; i < bench.Length; i++)
             {
                 if (bench[i].unit == null)
