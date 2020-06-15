@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Mirror
 {
-    public class CombatManager : MonoBehaviour
+    public class CombatManager : NetworkBehaviour
     {
         // --- COMBAT DATA --- 
         private Player main_Player;
@@ -41,7 +41,7 @@ namespace Mirror
         // Start is called before the first frame update
         public CombatManager()
         {
-            grid = new GridSpace[GRID_WIDTH, GRID_HEIGHT * 2];
+            grid = new GridSpace[GRID_WIDTH, GRID_HEIGHT];
         }
 
         // Update is called once per frame
@@ -80,7 +80,7 @@ namespace Mirror
                         //Debug.Log(c.grid_Position + " " + c.target.grid_Position);
 
                         //Determine if a new path needs to be generated
-                        c.CmdMoving(current_Distance);
+                        c.Moving(current_Distance);
                         if (!c.isMoving && current_Distance > c.range)
                         {
                             FindTarget(c);
@@ -89,7 +89,7 @@ namespace Mirror
                         else if (current_Distance <= c.range)
                         {
                             c.CastUltimate();
-                            c.CmdAttack();
+                            c.Attack();
                             if (c.target.health <= 0)
                             {
                                 grid[(int)c.target.grid_Position.x, (int)c.target.grid_Position.y].combat_Unit = null;
@@ -152,7 +152,7 @@ namespace Mirror
 
             //Set the character's path and first tile to begin the pathfinding
             grid[(int)character.grid_Position.x, (int)character.grid_Position.y].combat_Unit = null;
-            character.CmdAcquirePath(path);
+            character.AcquirePath(path);
         }
 
         //Add an element to the open list, sorting it by position relative to its
@@ -179,7 +179,7 @@ namespace Mirror
             {
                 for (short j = 0; j < 8; j++)
                 {
-                    grid[j, i].CmdResetCosts();
+                    grid[j, i].ResetCosts();
                 }
             }
 

@@ -17,7 +17,7 @@ namespace Mirror
         [Header("Player Data")]
         // --- PLAYER DATA --- 
         public GameObject player_Prefab;
-        public TestPlayer test_Prefab;
+        //public TestPlayer test_Prefab;
         private List<Player> players;
         private List<CombatManager> combat;
         public List<GameObject> characterPrefabs;
@@ -112,6 +112,7 @@ namespace Mirror
             previous_Phase = current_Phase;
             current_Phase = GAME_PHASE.CHANGE;
             phase_Timer = 0;
+            
         }
 
 
@@ -122,9 +123,10 @@ namespace Mirror
                 ? Instantiate(player_Prefab, startPos.position, startPos.rotation)
                 : Instantiate(player_Prefab);
 
-            NetworkServer.AddPlayerForConnection(conn, player.gameObject);
+            NetworkServer.AddPlayerForConnection(conn, player);
             players.Add(player.GetComponent<Player>());
-            players[players.Count - 1].SetUpPlayerGrid();
+            players[players.Count - 1].RpcSetUpPlayerGrid();
+            players[players.Count - 1].ServerSetUpPlayer();
         }
     }
 }

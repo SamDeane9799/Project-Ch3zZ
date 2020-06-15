@@ -30,8 +30,7 @@ namespace Mirror
 
         //Add a new character to the space and update their 
         //grid data to correspond appropriately
-        [Command]
-        public void CmdAddCharacter(Character character)
+        public void AddCharacter(Character character)
         {
             unit = character;
             combat_Unit = character;
@@ -40,32 +39,28 @@ namespace Mirror
         }
 
         //Add a character to the space for the sole purpose of combat
-        [Command]
-        public void CmdAddCombatCharacter(Character character)
+        public void AddCombatCharacter(Character character)
         {
             combat_Unit = character;
             character.grid_Position = grid_Position;
         }
 
         //Remove a character from the space
-        [Command]
-        public void CmdRemoveCharacter()
+        public void RemoveCharacter()
         {
             unit = null;
             combat_Unit = null;
         }
 
         //Reset the position of this grid's unit
-        [Command]
-        public void CmdResetUnitPosition()
+        public void ResetUnitPosition()
         {
             unit.transform.position = transform.position;
             unit.grid_Position = grid_Position;
         }
 
         //Reset the A* data costs of this space
-        [Command]
-        public void CmdResetCosts()
+        public void ResetCosts()
         {
             g = int.MaxValue;
             h = int.MaxValue;
@@ -140,12 +135,6 @@ namespace Mirror
     }
 
     [System.Serializable]
-    public class SyncListGridSpace : SyncList<GridSpace>
-    {
-        public GridSpace[] grid;
-    }
-
-    [System.Serializable]
     public class SyncStackGridSpace : SyncList<GridSpace>
     {        
         public void Push(GridSpace g)
@@ -166,8 +155,8 @@ namespace Mirror
     }
 
     [System.Serializable]
-    public class SyncBench: SyncList<GridSpace>
-    {
-        
+    public class SyncGridList: SyncList<GridSpace>
+    {      
     }
+
 }

@@ -112,8 +112,7 @@ namespace Mirror
         //Return whether or not a character can attack
         //If so, reset the attack timer and return true,
         //otherwise increment the timer and return false
-        [Command]
-        public void CmdAttack()
+        public void Attack()
         {
             if (attack_Timer >= 1.0f / attack_Speed)
             {
@@ -147,8 +146,7 @@ namespace Mirror
         }
 
         //Move the character according to their path
-        [Command]
-        public void CmdMoving(int current_Distance)
+        public void Moving(int current_Distance)
         {
             //If the character does not have a path
             if (path == null)
@@ -165,7 +163,7 @@ namespace Mirror
                 //Change path
                 if (current_Distance <= range)
                 {
-                    CmdFaceDirection(new Vector2(target.transform.position.x, target.transform.position.z));
+                    FaceDirection(new Vector2(target.transform.position.x, target.transform.position.z));
                     CmdResetPath();
                     isMoving = false;
                     return;
@@ -190,28 +188,26 @@ namespace Mirror
                 }
 
                 //Add the character to the path
-                next_Space.CmdAddCombatCharacter(this);
+                next_Space.AddCombatCharacter(this);
                 future_Position = next_Space.grid_Position;
-                CmdFaceDirection(new Vector2(next_Space.transform.position.x, next_Space.transform.position.z));
+                FaceDirection(new Vector2(next_Space.transform.position.x, next_Space.transform.position.z));
             }
             transform.position = Vector3.Lerp(transform.position, next_Space.transform.position, 0.1f);
             isMoving = true;
         }
 
         //Pass in a new path to be used when moving
-        [Command]
-        public void CmdAcquirePath(SyncStackGridSpace _path)
+        public void AcquirePath(SyncStackGridSpace _path)
         {
             next_Space = _path.Pop();
-            next_Space.CmdAddCombatCharacter(this);
+            next_Space.AddCombatCharacter(this);
             path = _path;
             future_Distance = (int)Vector2.Distance(grid_Position, target.grid_Position + target.future_Position);
-            CmdFaceDirection(new Vector2(next_Space.transform.position.x, next_Space.transform.position.z));
+            FaceDirection(new Vector2(next_Space.transform.position.x, next_Space.transform.position.z));
         }
 
         //Turn to face a particular point in space
-        [Command]
-        private void CmdFaceDirection(Vector2 point)
+        private void FaceDirection(Vector2 point)
         {
             Vector2 distance = new Vector2(point.x - transform.position.x, point.y - transform.position.z);
             Vector2 forward = new Vector2(transform.forward.x, transform.forward.z);

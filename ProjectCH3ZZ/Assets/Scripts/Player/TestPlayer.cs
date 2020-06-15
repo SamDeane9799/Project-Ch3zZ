@@ -7,7 +7,7 @@ using UnityEngine.EventSystems;
 
 namespace Mirror
 {
-    public class TestPlayer : Player
+    /*public class TestPlayer : Player
     {
         public Character characterPrefab;
 
@@ -18,9 +18,9 @@ namespace Mirror
             field_Units = new SyncListCharacter();
             bench_Units = new SyncListCharacter();
             current_Mods = new CHARACTER_MODIFIER[19]; //Number of possible mods
-
+*//*
             grid = new GridSpace[8, 4];
-            bench = new GridSpace[8];
+            bench = new GridSpace[8];*/
 
             /*for (short i = 0; i < 4; i++)
             {
@@ -32,7 +32,7 @@ namespace Mirror
             for (short i = 0; i < 8; i++)
             {
                 bench[i] = Instantiate<GameObject>(gridPrefab, new Vector3(i - 3.5f, 5, 3.5f), Quaternion.identity);
-            }*/
+            }*//*
 
             Character character = Instantiate<Character>(characterPrefab);
             BenchToField(character);
@@ -109,5 +109,5 @@ namespace Mirror
                 if (p_Attributes[o] == 0) p_Attributes.Remove(o);
             }
         }
-    }
+    }*/
 }
