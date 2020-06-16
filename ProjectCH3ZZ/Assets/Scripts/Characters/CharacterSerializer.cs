@@ -8,6 +8,7 @@ namespace Mirror
     {
         public static void WriteCharacter(this NetworkWriter writer, Character character)
         {
+            writer.WriteString(character.name);
             writer.WriteVector2(character.grid_Position);
             writer.WriteVector2(character.future_Position);
             writer.WriteInt16(character.gold_Cost);

@@ -37,19 +37,33 @@ namespace Mirror
         // --- CHARACTER DATA ---
         [Header("Character Data")]
         public List<ATTRIBUTES> attributes;
+        [SyncVar]
         public Vector2 grid_Position;
+        [SyncVar]
         public Vector2 future_Position;
+        [SyncVar]
         public short gold_Cost; //Amount of gold required to purchase the character
+        [SyncVar]
         public short tier; //Tier related to its frequency in the shop
+        [SyncVar]
         public short level; //The level of the unit
+        [SyncVar]
         public short mana;
+        [SyncVar]
         public short max_Mana; //Amount of mana required to cast an ultimate
+        [SyncVar]
         public short base_Mana; //Amount of mana a character begins the game with
+        [SyncVar]
         public short attack_Damage; //Damage dealt per auto attack
+        [SyncVar]
         public short spell_Power; //Amplification of the effect of ultimates
+        [SyncVar]
         public double attack_Speed; //How fast a character attacks
+        [SyncVar]
         public short maxHealth;
+        [SyncVar]
         public short health; //Amount of health a character has
+        [SyncVar]
         public short armor; //Resistance to physical damage
         public short magic_Resistance; //Resistance to magic damage
         public short range; //Range in tile units
@@ -107,6 +121,7 @@ namespace Mirror
         {
             level++;
             transform.localScale = new Vector3(1f, 1f, 1f);
+           // SetDirtyBit(1 << 2);
         }
 
         //Return whether or not a character can attack

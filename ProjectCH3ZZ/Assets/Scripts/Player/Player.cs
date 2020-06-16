@@ -35,6 +35,7 @@ namespace Mirror
         protected Dictionary<ATTRIBUTES, short> p_Attributes;
         public SyncListCharacter field_Units; //All units on the field
         public SyncListCharacter bench_Units; //All units on the bench
+        
         public short[,] characterLevels; //The amount of a particular character at a certain level
         protected Text synergiesText;
         protected const short GRID_WIDTH = 8;
@@ -282,8 +283,11 @@ namespace Mirror
         //Prioritize upgrading a unit on the field and searching for units
         //on the bench to get rid of, before getting rid of units
         //on the field
-        private bool UpgradeUnit(short ID, short level)
+        [Command]
+        private void CmdUpgradeUnit(short ID, short level, short charLevelsAmount)
         {
+            characterLevels[ID, level - 1] = charLevelsAmount;
+            if(level == 1) characterLevels[ID, 0]--;
             //Find the id of the first field unit
             int unitIndex = FindUnitID(field_Units, ID, level);
 
@@ -307,7 +311,11 @@ namespace Mirror
                 if (bench_Units[i].ID == ID && bench_Units[i].level == level)
                 {
                     RemoveCharacter(bench_Units[i]);
-                    if (characterLevels[ID, level - 1] == 0) return true;
+                    if (characterLevels[ID, level - 1] == 0)
+                    {
+                        RpcUpdateCharLevels(0, ID, level - 1);
+                        return;
+                    }
                 }
             }
 
@@ -320,17 +328,20 @@ namespace Mirror
                     if (field_Units[i].ID == ID && field_Units[i].level == level)
                     {
                         RemoveCharacter(field_Units[i]);
-                        if (characterLevels[ID, level - 1] == 0) return true;
+                        if (characterLevels[ID, level - 1] == 0)
+                        {
+                            RpcUpdateCharLevels(0, ID, level);
+                            return;
+                        }
                     }
                 }
             }
-
-            return false;
         }
 
         //Look specifically at units on the bench while the player is in combat
-        //to determine if anything needs an upgrade
-        private bool UpgradeUnitInCombat(short ID, short level)
+        //to determine if anything needs an
+        [Command]
+        private void CmdUpgradeUnitInCombat(short ID, short level)
         {
             //Find the index on the bench
             int unitIndex = FindUnitID(bench_Units, ID, level);
@@ -356,12 +367,10 @@ namespace Mirror
                         characterLevels[ID, level - 1]--;
                         characterLevels[ID, level]++;
                         bench_Units[unitIndex].IncrementLevel();
-                        return true;
+                        return;
                     }
                 }
             }
-
-            return false;
         }
 
         //Adding a unit to the bench from the shop
@@ -373,51 +382,53 @@ namespace Mirror
             //Check to see if an upgrade can be made in outside of combat
             if (!in_Combat && characterLevels[charToSpawn.unitID, 0] >= 3)
             {
-                characterLevels[charToSpawn.unitID, 0]--;
-                if (UpgradeUnit(charToSpawn.unitID, 1))
-                {
-                    if (characterLevels[charToSpawn.unitID, 1] >= 3) UpgradeUnit(charToSpawn.unitID, 2);
-                    return true;
-                }
+                CmdUpgradeUnit(charToSpawn.unitID, 1, characterLevels[charToSpawn.unitID, 0]);
+                if (characterLevels[charToSpawn.unitID, 1] >= 3) CmdUpgradeUnit(charToSpawn.unitID, 2, characterLevels[charToSpawn.unitID, 1]);
+                return true;
             }
             //Check to see if an upgrade can be made during combat
             else if (characterLevels[charToSpawn.unitID, 0] >= 3 && bench_Units.Count > 0)
             {
-                if (UpgradeUnitInCombat(charToSpawn.unitID, 1))
-                {
-                    if (characterLevels[charToSpawn.unitID, 1] >= 3) UpgradeUnitInCombat(charToSpawn.unitID, 2);
-                    return true;
-                }
+               CmdUpgradeUnitInCombat(charToSpawn.unitID, 1);
+                if (characterLevels[charToSpawn.unitID, 1] >= 3) CmdUpgradeUnitInCombat(charToSpawn.unitID, 2);
+                if(characterLevels[charToSpawn.unitID, 0] < 2) return true;
             }
 
-            //GameObject character = null;
-            Debug.Log(grid[0, 0]);
             for (short i = 0; i < bench.Length; i++)
             {
                 if (bench[i].unit == null)
                 {
-                    SpawnUnit(i, charToSpawn.unitID);
+                    CmdSpawnUnit(i, charToSpawn.unitID);
                     return true;
                 }
             }
             return false;
         }
 
-        public void SpawnUnit(int benchIndex, int unitID)
+        [ClientRpc]
+        private void RpcUpdateCharLevels(short amount, short ID, int level)
+        {
+            characterLevels[ID, level] = amount;
+        }
+
+        [Command]
+        public void CmdSpawnUnit(int benchIndex, int unitID)
         {
             GameObject go = Instantiate(characterPrefabs[unitID - 1]);
             Character charComponent = go.GetComponent<Character>();
+            NetworkServer.Spawn(go, connectionToClient);
+            RpcAddUnitToBench(go, benchIndex);
             bench[benchIndex].GetComponent<GridSpace>().AddCharacter(charComponent);
             bench_Units.Insert(benchIndex, charComponent);
-            NetworkServer.Spawn(go);
-            go.GetComponent<NetworkIdentity>().AssignClientAuthority(connectionToClient);
         }
 
-/*        [ClientRpc]
-        public void RpcAddUnitToBench(Character charToAdd, int benchIndex)
+        [ClientRpc]
+        public void RpcAddUnitToBench(GameObject charToAdd, int benchIndex)
         {
-            
-        }*/
+            Character charComponent = charToAdd.GetComponent<Character>();
+            bench[benchIndex].GetComponent<GridSpace>().AddCharacter(charComponent);
+            bench_Units.Insert(benchIndex, charComponent);
+        }
 
         //Sell a unit by removing all references to it 
         private void SellUnit(Character unitToSell)
@@ -522,6 +533,7 @@ namespace Mirror
             bench_Units.Remove(character);
             characterLevels[character.ID, character.level - 1]--;
             Destroy(character.gameObject);
+            NetworkServer.Destroy(character.gameObject);
         }
 
         //When a unit is moved, evaluate the buffs on the current board and
@@ -945,12 +957,15 @@ namespace Mirror
             {
                 if (characterLevels[toUpgrade[i], 0] >= 3)
                 {
-                    if (UpgradeUnit(toUpgrade[i], 1) && characterLevels[toUpgrade[i], 1] >= 3)
-                        UpgradeUnit(toUpgrade[i], 2);
+                    CmdUpgradeUnit(toUpgrade[i], 1, characterLevels[toUpgrade[i], 0]);
+                    if (characterLevels[toUpgrade[i], 1] >= 3)
+                    {
+                        CmdUpgradeUnit(toUpgrade[i], 2, characterLevels[toUpgrade[i], 1]);
+                    }
                 }
-                else
+                else if(characterLevels[toUpgrade[i], 1] >= 3)
                 {
-                    UpgradeUnit(toUpgrade[i], 2);
+                    CmdUpgradeUnit(toUpgrade[i], 2, characterLevels[toUpgrade[i], 1]);
                 }
             }
         }
