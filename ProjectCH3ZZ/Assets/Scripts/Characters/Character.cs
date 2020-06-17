@@ -36,7 +36,7 @@ namespace Mirror
         #region CHARACTER_STATS
         // --- CHARACTER DATA ---
         [Header("Character Data")]
-        public List<ATTRIBUTES> attributes;
+
         [SyncVar]
         public Vector2 grid_Position;
         [SyncVar]
@@ -58,21 +58,25 @@ namespace Mirror
         [SyncVar]
         public short spell_Power; //Amplification of the effect of ultimates
         [SyncVar]
-        public double attack_Speed; //How fast a character attacks
+        public float attack_Speed; //How fast a character attacks
         [SyncVar]
         public short maxHealth;
         [SyncVar]
         public short health; //Amount of health a character has
         [SyncVar]
         public short armor; //Resistance to physical damage
+        [SyncVar]
         public short magic_Resistance; //Resistance to magic damage
+        [SyncVar]
         public short range; //Range in tile units
+        [SyncVar]
         public short ID; //Character num ID
+        public List<ATTRIBUTES> attributes;
         #endregion
 
         //Information for attacking
         public Character target;
-        public double attack_Timer = 0.0f;
+        public float attack_Timer = 0.0f;
 
         // --- UI DATA ---
         protected Slider healthBar;
@@ -120,8 +124,14 @@ namespace Mirror
         public virtual void IncrementLevel()
         {
             level++;
+            RpcScaleUp();
+        }
+
+        [ClientRpc]
+        public void RpcScaleUp()
+        {
+
             transform.localScale = new Vector3(1f, 1f, 1f);
-           // SetDirtyBit(1 << 2);
         }
 
         //Return whether or not a character can attack
@@ -252,9 +262,9 @@ namespace Mirror
             CmdResetPath();
         }
 
-        public override bool OnSerialize(NetworkWriter writer, bool initialState)
+        /*public override bool OnSerialize(NetworkWriter writer, bool initialState)
         {
-            base.OnSerialize(writer, initialState);
+            //base.OnSerialize(writer, initialState);
             if(initialState)
             {
                 //First time data is sent to the client/Server
@@ -268,14 +278,14 @@ namespace Mirror
                 writer.WriteInt16(base_Mana);
                 writer.WriteInt16(attack_Damage);
                 writer.WriteInt16(spell_Power);
-                writer.WriteDouble(attack_Speed);
+                writer.WriteSingle(attack_Speed);
                 writer.WriteInt16(maxHealth);
                 writer.WriteInt16(armor);
                 writer.WriteInt16(magic_Resistance);
                 writer.WriteInt16(range);
                 writer.WriteInt16(ID);
-
-                writer.WriteDouble(attack_Timer);
+                
+                writer.WriteSingle(attack_Timer);
             }
 
             bool wroteSyncVar = false;
@@ -417,7 +427,7 @@ namespace Mirror
                     writer.WritePackedUInt64(base.syncVarDirtyBits);
                     wroteSyncVar = true;
                 }
-                writer.WriteDouble(attack_Timer);
+                writer.WriteSingle(attack_Timer);
             }
             if ((base.syncVarDirtyBits & 32768u) != 0u)
             {
@@ -428,6 +438,7 @@ namespace Mirror
                 }
                 writer.WriteBoolean(isMoving);
             }
+
             if (!wroteSyncVar)
             {
                 writer.WritePackedInt32(0);
@@ -450,14 +461,15 @@ namespace Mirror
                 this.base_Mana = reader.ReadInt16();
                 this.attack_Damage = reader.ReadInt16();
                 this.spell_Power = reader.ReadInt16();
-                this.attack_Speed = reader.ReadDouble();
+                this.attack_Speed = reader.ReadSingle();
                 this.maxHealth = reader.ReadInt16();
                 this.health = reader.ReadInt16();
                 this.armor = reader.ReadInt16();
                 this.magic_Resistance = reader.ReadInt16();
                 this.range = reader.ReadInt16();
                 this.ID = reader.ReadInt16();
-                this.attack_Timer = reader.ReadDouble();
+
+                this.attack_Timer = reader.ReadSingle();
             }
             int num = (int)reader.ReadPackedUInt32();
             if((num & 1) != 0)
@@ -494,7 +506,7 @@ namespace Mirror
             }
             if ((num & 256) != 0)
             {
-                this.attack_Speed = reader.ReadDouble();
+                this.attack_Speed = reader.ReadSingle();
             }
             if ((num & 512) != 0)
             {
@@ -518,13 +530,13 @@ namespace Mirror
             }
             if ((num & 16384) != 0)
             {
-                this.attack_Timer = reader.ReadDouble();
+                this.attack_Timer = reader.ReadSingle();
             }
             if((num & 32768) != 0)
             {
                 this.isMoving = reader.ReadBoolean();
             }
-        }
+        }*/
     }
 
     [System.Serializable]

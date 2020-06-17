@@ -110,8 +110,6 @@ namespace Mirror
             short costOfItem = itemToPurchase.cost;
             //Check if player has room on bench
             if (costOfItem > player.gold) return;
-
-
             if (player.BuyUnit(itemToPurchase))
             {
                 player.gold -= costOfItem;
