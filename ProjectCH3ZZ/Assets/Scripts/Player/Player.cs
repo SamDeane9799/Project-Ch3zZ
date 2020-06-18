@@ -20,6 +20,8 @@ namespace Mirror
         public bool in_Combat;
         [SyncVar]
         protected PLAYER_MODIFIER player_Mod;
+        [SyncVar]
+        public bool readyToSetup;
 
         // --- GRID DATA ---
         [Header("Grid Data")]
@@ -71,7 +73,6 @@ namespace Mirror
         public virtual void Start()
         {
             //Initialize important stuff i guess
-            
             p_Attributes = new Dictionary<ATTRIBUTES, short>();
             playerCamera = GetComponent<Camera>();
             current_Mods = new CHARACTER_MODIFIER[19]; //Number of possible mods
@@ -82,9 +83,9 @@ namespace Mirror
 
             synergiesText = transform.GetChild(0).GetChild(3).GetComponent<Text>();
 
-            playerCanvas = GetComponentInChildren<Canvas>();
+            playerCanvas = transform.GetChild(0).GetComponent<Canvas>();
             playerShop = GetComponentInChildren<Shop>();
-            m_Raycaster = GetComponentInChildren<GraphicRaycaster>();
+            m_Raycaster = playerCanvas.GetComponent<GraphicRaycaster>();
             ui_Results = new List<RaycastResult>();
             m_Eventsystem = GetComponent<EventSystem>();
 
@@ -92,6 +93,7 @@ namespace Mirror
             {
                 GetComponent<AudioListener>().enabled = true;
                 playerCamera.enabled = true;
+                playerCanvas.gameObject.SetActive(true);
             }
         }
 
@@ -100,8 +102,7 @@ namespace Mirror
         {
             if (isLocalPlayer)
             {
-                if (NetworkServer.connections.Count >= 2 && grid == null) CmdSetUpPlayerGrid();
-
+                if (readyToSetup && grid == null) CmdSetUpPlayerGrid();
                 //Check if the player is holding a unit
                 if (dragging_Unit)
                 {
@@ -162,11 +163,11 @@ namespace Mirror
                 {
                     //If player left clicks while nothing is done here we do this
                     LayerMask unitMask = 1 << 9; //Character layer
-                    GameObject UIElement = ProjectGraphicalRay();
 
                     //Checks if we clicked a character
                     if (ProjectRay(unitMask))
                     {
+                        Debug.Log("clicked character");
                         //Find the space occupied by the character
                         Character character = hit.transform.gameObject.GetComponent<Character>();
 
@@ -175,12 +176,15 @@ namespace Mirror
                         if (character.grid_Position.y == GRID_HEIGHT) previous_Space = bench[(int)character.grid_Position.x];
                         else previous_Space = grid[(int)character.grid_Position.x, (int)character.grid_Position.y];
                         unit_ToMove = previous_Space.unit.gameObject;
+
+                        Debug.Log("Dragging unit set to true");
                         dragging_Unit = true;
                     }
                     //Checking if we clicked an item
                     else if (ProjectRay(1 << 12))
                     {
                         unit_ToMove = hit.transform.gameObject;
+                        Debug.Log("Dragging unit set to true");
                         dragging_Unit = true;
                     }
                 }

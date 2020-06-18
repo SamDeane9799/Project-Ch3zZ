@@ -273,7 +273,7 @@ RectTransform:
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -434,6 +434,7 @@ MonoBehaviour:
   gold: 5
   xp: 0
   in_Combat: 0
+  readyToSetup: 0
   gridPrefab: {fileID: 1198929948884820417, guid: 9fcbe77a96884654e8b35fb5e2fa262c,
     type: 3}
   bench: []
@@ -532,7 +533,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &697788206437418709
 RectTransform:
   m_ObjectHideFlags: 0

@@ -18,7 +18,7 @@ namespace Mirror
         {
             main_Player = main;
             other_Player = other;
-            other.transform.position = main_Player.transform.position + new Vector3(-1, 0, 20);
+            other.transform.position = main_Player.transform.position + new Vector3(-1, 0, 23);
             other.transform.rotation = Quaternion.Euler(new Vector3(main.transform.localEulerAngles.x, main.transform.localEulerAngles.y + 180, 0));
             main_Player.in_Combat = true;
             other_Player.in_Combat = true;

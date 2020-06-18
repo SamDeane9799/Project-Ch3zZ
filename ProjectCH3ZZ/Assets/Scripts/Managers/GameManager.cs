@@ -65,7 +65,7 @@ namespace Mirror
                 case GAME_PHASE.COMBAT: //Combat phase
                     foreach (CombatManager c in combat)
                     {
-                        //c.Update();
+                        c.Update();
                     }
                     if (phase_Timer >= COMBAT_TIME)
                     {
@@ -127,6 +127,13 @@ namespace Mirror
 
             NetworkServer.AddPlayerForConnection(conn, player);
             players.Add(player.GetComponent<Player>());
+            if(players.Count >= 2)
+            {
+                for(short i = 0; i < players.Count; i++)
+                {
+                    players[i].readyToSetup = true;
+                }
+            }
         }
     }
 }
