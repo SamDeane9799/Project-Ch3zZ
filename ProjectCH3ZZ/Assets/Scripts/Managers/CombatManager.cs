@@ -18,6 +18,8 @@ namespace Mirror
         {
             main_Player = main;
             other_Player = other;
+            other.transform.position = main_Player.transform.position + new Vector3(-1, 0, 20);
+            other.transform.rotation = Quaternion.Euler(new Vector3(main.transform.localEulerAngles.x, main.transform.localEulerAngles.y + 180, 0));
             main_Player.in_Combat = true;
             other_Player.in_Combat = true;
             for (short i = 0; i < GRID_HEIGHT; i++)
@@ -26,12 +28,6 @@ namespace Mirror
                 {
                     grid[j, i] = main_Player.grid[j, i];
                     grid[j, i].SetGridPosition(new Vector2(j, i));
-                }
-            }
-            for (short i = 0; i < GRID_HEIGHT; i++)
-            {
-                for (short j = 0; j < GRID_WIDTH; j++)
-                {
                     grid[j, i + 4] = other_Player.grid[j, i];
                     grid[j, i + 4].SetGridPosition(new Vector2(j, i + 4));
                 }
@@ -41,7 +37,7 @@ namespace Mirror
         // Start is called before the first frame update
         public CombatManager()
         {
-            grid = new GridSpace[GRID_WIDTH, GRID_HEIGHT];
+            grid = new GridSpace[GRID_WIDTH, GRID_HEIGHT * 2];
         }
 
         // Update is called once per frame

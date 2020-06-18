@@ -17,7 +17,7 @@ namespace Mirror
         [Header("Player Data")]
         // --- PLAYER DATA --- 
         public GameObject player_Prefab;
-        //public TestPlayer test_Prefab;
+        public GameObject test_Prefab;
         private List<Player> players;
         private List<CombatManager> combat;
         public List<GameObject> characterPrefabs;
@@ -27,7 +27,7 @@ namespace Mirror
         private GAME_PHASE previous_Phase;
         private float phase_Timer;
         private short round;        
-        private const float PREPARATION_TIME = 10;
+        private const float PREPARATION_TIME = 2;
         private const float ITEM_TIME = 20;
         private const float PHASE_CHANGE_TIME = 5;
         private const float COMBAT_TIME = 10;
@@ -42,15 +42,17 @@ namespace Mirror
             {
                 combat.Add(new CombatManager());
             }
-
-            //players.Add(Instantiate(player_Prefab));
-            //players.Add(Instantiate(test_Prefab));
             current_Phase = GAME_PHASE.PREPARATION;
+
+            //poop
         }
 
         // Update is called once per frame
         void Update()
         {
+            if (players.Count < 2)
+                return;
+
             //Check the current phase of the game
             switch (current_Phase)
             {
@@ -77,7 +79,7 @@ namespace Mirror
                         {
                             case GAME_PHASE.PREPARATION:
                                 current_Phase = GAME_PHASE.COMBAT;
-                                //combat[0].SetCombat(players[0], players[1]);
+                                combat[0].SetCombat(players[0], players[1]);
                                 break;
                             case GAME_PHASE.COMBAT:
                                 foreach (Player p in players)
@@ -125,9 +127,6 @@ namespace Mirror
 
             NetworkServer.AddPlayerForConnection(conn, player);
             players.Add(player.GetComponent<Player>());
-            /*players[players.Count - 1].BenchSetup += players[players.Count - 1].SetBenchSpot;
-            players[players.Count - 1].GridSetup += players[players.Count - 1].SetGridSpot;
-            players[players.Count - 1].ServerSetUpPlayer();*/
         }
     }
 }

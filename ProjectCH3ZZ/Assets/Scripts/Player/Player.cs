@@ -19,14 +19,14 @@ namespace Mirror
         [SyncVar]
         public bool in_Combat;
         [SyncVar]
-        private PLAYER_MODIFIER player_Mod;
+        protected PLAYER_MODIFIER player_Mod;
 
         // --- GRID DATA ---
         [Header("Grid Data")]
         public GameObject gridPrefab;
         public GridSpace[,] grid;
         public GridSpace[] bench;
-        private float benchZPosition;
+        protected float benchZPosition;
 
         // --- CHARACTER DATA ---
         [Header("Character Data")]
@@ -40,7 +40,7 @@ namespace Mirror
         protected Text synergiesText;
         protected const short GRID_WIDTH = 8;
         protected const short GRID_HEIGHT = 4;
-        private Camera playerCamera;
+        protected Camera playerCamera;
 
         // --- ITEM DATA ---
         [Header("Item Data")]
@@ -93,9 +93,6 @@ namespace Mirror
                 GetComponent<AudioListener>().enabled = true;
                 playerCamera.enabled = true;
             }
-
-            if(isLocalPlayer)CmdSetUpPlayerGrid();
-
         }
 
         //CALLED EVERY FRAME
@@ -103,6 +100,8 @@ namespace Mirror
         {
             if (isLocalPlayer)
             {
+                if (NetworkServer.connections.Count >= 2 && grid == null) CmdSetUpPlayerGrid();
+
                 //Check if the player is holding a unit
                 if (dragging_Unit)
                 {
@@ -189,7 +188,7 @@ namespace Mirror
         }
         
         [ClientRpc]
-        private void RpcCreateBoard()
+        protected void RpcCreateBoard()
         {
             grid = new GridSpace[GRID_WIDTH, GRID_HEIGHT];
             bench = new GridSpace[GRID_WIDTH];
@@ -203,14 +202,18 @@ namespace Mirror
             RpcCreateBoard();
             for (short i = 0; i < GRID_WIDTH; i++)
             {
-                GameObject benchSpot = Instantiate<GameObject>(gridPrefab, new Vector3(transform.position.x + i - 4, 0, transform.position.z + 6), Quaternion.identity);
+                GameObject benchSpot = Instantiate<GameObject>(gridPrefab);
+                benchSpot.transform.SetParent(transform);
+                benchSpot.transform.SetPositionAndRotation(new Vector3(transform.position.x + i - 4, 0, transform.position.z + 6), Quaternion.Euler(Vector3.zero));
                 NetworkServer.Spawn(benchSpot, connectionToClient);
                 RpcSetBenchSpot(i, benchSpot);
                 bench[i] = benchSpot.GetComponent<GridSpace>();
                 bench[i].SetGridPosition(new Vector2(i, GRID_HEIGHT));
                 for (short j = 0; j < GRID_HEIGHT; j++)
                 {
-                    GameObject gridSpot = Instantiate<GameObject>(gridPrefab, new Vector3(transform.position.x + i - 4, 0, transform.position.z + 8 + (j % GRID_HEIGHT)), Quaternion.identity);
+                    GameObject gridSpot = Instantiate<GameObject>(gridPrefab);
+                    gridSpot.transform.SetParent(transform);
+                    gridSpot.transform.SetPositionAndRotation(new Vector3(transform.position.x + i - 4, 0, transform.position.z + 8 + (j % GRID_HEIGHT)), Quaternion.Euler(Vector3.zero));
                     NetworkServer.Spawn(gridSpot, connectionToClient);
                     RpcSetGridSpot(i, j, gridSpot);
                     grid[i, j] = gridSpot.GetComponent<GridSpace>();
@@ -224,6 +227,8 @@ namespace Mirror
         {
             grid[i, j] = gridSpot.GetComponent<GridSpace>();
             grid[i, j].SetGridPosition(new Vector2(i, j));
+            gridSpot.transform.SetParent(transform);
+            gridSpot.transform.SetPositionAndRotation(new Vector3(transform.position.x + i - 4, 0, transform.position.z + 8 + (j % GRID_HEIGHT)), Quaternion.Euler(Vector3.zero));
         }
 
 
@@ -233,6 +238,8 @@ namespace Mirror
         {
             bench[i] = gridSpot.GetComponent<GridSpace>();
             bench[i].GetComponent<GridSpace>().SetGridPosition(new Vector2(i, GRID_HEIGHT));
+            gridSpot.transform.SetParent(transform);
+            gridSpot.transform.SetPositionAndRotation(new Vector3(transform.position.x + i - 4, 0, transform.position.z + 6), Quaternion.Euler(Vector3.zero));
         }
 
         // --- HELPER METHODS ---
@@ -415,6 +422,8 @@ namespace Mirror
         public void CmdSpawnUnit(int benchIndex, int unitID)
         {
             GameObject go = Instantiate(characterPrefabs[unitID - 1]);
+            go.transform.SetParent(transform);
+            go.transform.rotation = Quaternion.Euler(Vector3.zero);
             Character charComponent = go.GetComponent<Character>();
             NetworkServer.Spawn(go, connectionToClient);
             RpcAddUnitToBench(go, benchIndex);
@@ -425,6 +434,8 @@ namespace Mirror
         [ClientRpc]
         public void RpcAddUnitToBench(GameObject charToAdd, int benchIndex)
         {
+            charToAdd.transform.SetParent(transform);
+            charToAdd.transform.rotation = Quaternion.Euler(Vector3.zero);
             Character charComponent = charToAdd.GetComponent<Character>();
             bench[benchIndex].GetComponent<GridSpace>().AddCharacter(charComponent);
             bench_Units.Insert(benchIndex, charComponent);
