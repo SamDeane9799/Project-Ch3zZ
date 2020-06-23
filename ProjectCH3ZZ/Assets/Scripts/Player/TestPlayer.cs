@@ -22,43 +22,43 @@ namespace Mirror
             benchZPosition = transform.position.z + 6;
         }
 
-        protected override void BenchToField(Character unit)
-        {
-            bench_Units.Remove(unit);
-            field_Units.Add(unit);
-            foreach (Character c in field_Units)
-            {
-                if (unit.name == c.name && c != unit)
-                {
-                    return;
-                }
-            }
-            foreach (ATTRIBUTES o in unit.attributes)
-            {
-                if (p_Attributes.ContainsKey(o)) p_Attributes[o]++;
-                else p_Attributes.Add(o, 1);
-                CheckAttributes(o);
-            }
-        }
-
-        protected override void FieldToBench(Character unit)
-        {
-            field_Units.Remove(unit);
-            bench_Units.Add(unit);
-            foreach (Character c in field_Units)
-            {
-                if (unit.name == c.name && unit != c)
-                {
-                    return;
-                }
-            }
-            foreach (ATTRIBUTES o in unit.attributes)
-            {
-                if (p_Attributes.ContainsKey(o)) p_Attributes[o]--;
-                CheckAttributes(o);
-                if (p_Attributes[o] == 0) p_Attributes.Remove(o);
-            }
-        }
+        //protected override void CmdBenchToField(Character unit)
+        //{
+        //    bench_Units.Remove(unit);
+        //    field_Units.Add(unit);
+        //    foreach (Character c in field_Units)
+        //    {
+        //        if (unit.name == c.name && c != unit)
+        //        {
+        //            return;
+        //        }
+        //    }
+        //    foreach (ATTRIBUTES o in unit.attributes)
+        //    {
+        //        if (p_Attributes.ContainsKey(o)) p_Attributes[o]++;
+        //        else p_Attributes.Add(o, 1);
+        //        CheckAttributes(o);
+        //    }
+        //}
+        //
+        //protected override void CmdFieldToBench(Character unit)
+        //{
+        //    field_Units.Remove(unit);
+        //    bench_Units.Add(unit);
+        //    foreach (Character c in field_Units)
+        //    {
+        //        if (unit.name == c.name && unit != c)
+        //        {
+        //            return;
+        //        }
+        //    }
+        //    foreach (ATTRIBUTES o in unit.attributes)
+        //    {
+        //        if (p_Attributes.ContainsKey(o)) p_Attributes[o]--;
+        //        CheckAttributes(o);
+        //        if (p_Attributes[o] == 0) p_Attributes.Remove(o);
+        //    }
+        //}
         
         public void SetupGrid()
         {
@@ -91,7 +91,7 @@ namespace Mirror
             character.transform.SetParent(transform);
             character.transform.rotation = Quaternion.Euler(Vector3.zero);
             NetworkServer.Spawn(character.gameObject);
-            BenchToField(character);
+            //CmdBenchToField(character);
             grid[7, 3].AddCharacter(character);
         }
     }

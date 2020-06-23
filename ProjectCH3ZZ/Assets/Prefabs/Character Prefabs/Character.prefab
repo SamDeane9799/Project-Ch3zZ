@@ -578,7 +578,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   syncMode: 0
   syncInterval: 0.1
-  attributes: 
   grid_Position: {x: 0, y: 0}
   future_Position: {x: 0, y: 0}
   gold_Cost: 1
@@ -596,9 +595,9 @@ MonoBehaviour:
   magic_Resistance: 0
   range: 0
   ID: 7
+  attributes: 
   target: {fileID: 0}
   attack_Timer: 0
-  isMoving: 0
 --- !u!114 &-420356333659946505
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -628,8 +627,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   syncMode: 0
-  syncInterval: 0.1
-  clientAuthority: 1
+  syncInterval: 0.01
+  clientAuthority: 0
   localPositionSensitivity: 0.01
   localRotationSensitivity: 0.01
   localScaleSensitivity: 0.01

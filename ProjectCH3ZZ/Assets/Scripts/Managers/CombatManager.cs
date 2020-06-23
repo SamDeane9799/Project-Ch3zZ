@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Mirror
 {
-    public class CombatManager : NetworkBehaviour
+    public class CombatManager
     {
         // --- COMBAT DATA --- 
         private Player main_Player;
@@ -50,6 +50,7 @@ namespace Mirror
         //Simulate combat between two players by determining the next action of their units
         private void SimulateCombat(SyncListCharacter fielded_Units, SyncListCharacter enemy_Units)
         {
+            Debug.Log("IM ZOE");
             //Loop through the first player's units and determine what they should do 
             foreach (Character c in fielded_Units)
             {
@@ -76,9 +77,10 @@ namespace Mirror
                         //Debug.Log(c.grid_Position + " " + c.target.grid_Position);
 
                         //Determine if a new path needs to be generated
-                        c.Moving(current_Distance);
-                        if (!c.isMoving && current_Distance > c.range)
+                        Debug.Log(c.grid_Position + " | " + c.target.grid_Position);
+                        if (!c.Moving(current_Distance) && current_Distance > c.range)
                         {
+                            Debug.Log("ACQUIRING TARGET");
                             FindTarget(c);
                         }
                         //If the character is in range, begin attacking
@@ -133,7 +135,7 @@ namespace Mirror
         //take by checking the parents of each tile in the grid
         private void CalculatePath(Character character, Vector2 target)
         {
-            SyncStackGridSpace path = new SyncStackGridSpace();
+            Stack<GridSpace> path = new Stack<GridSpace>();
             int x = (int)target.x;
             int y = (int)target.y;
 

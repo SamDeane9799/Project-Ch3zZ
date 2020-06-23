@@ -84,16 +84,14 @@ namespace Mirror
 
         //Information for pathfinding
         protected GridSpace next_Space;
-        protected SyncStackGridSpace path;
+        protected Stack<GridSpace> path;
         protected int future_Distance;
-        public bool isMoving;
 
         public virtual void Awake()
         {
             attributes = new List<ATTRIBUTES>();
             healthBar = GetComponentInChildren<Canvas>().transform.GetChild(0).GetComponent<Slider>();
             manaBar = GetComponentInChildren<Canvas>().transform.GetChild(1).GetComponent<Slider>();
-            isMoving = false;
         }
 
         //Set the important character stats 
@@ -171,13 +169,13 @@ namespace Mirror
         }
 
         //Move the character according to their path
-        public void Moving(int current_Distance)
+        public bool Moving(int current_Distance)
         {
+            //Debug.Log(next_Space);
             //If the character does not have a path
             if (path == null)
             {
-                isMoving = false;
-                return;
+                return false;
             }
             if (Vector3.Distance(transform.position, next_Space.transform.position) <= 0.1)
             {
@@ -189,15 +187,13 @@ namespace Mirror
                 if (current_Distance <= range)
                 {
                     FaceDirection(new Vector2(target.transform.position.x, target.transform.position.z));
-                    CmdResetPath();
-                    isMoving = false;
-                    return;
+                    ResetPath();
+                    return false;
                 }
                 if (path.Count == 0 || current_Distance >= future_Distance)
                 {
-                    CmdResetPath();
-                    isMoving = false;
-                    return;
+                    ResetPath();
+                    return false;
                 }
 
                 //Get a new space to find
@@ -207,9 +203,8 @@ namespace Mirror
                 //Change path if the next space is occupied
                 if (next_Space.combat_Unit != null)
                 {
-                    CmdResetPath();
-                    isMoving = false;
-                    return;
+                    ResetPath();
+                    return false;
                 }
 
                 //Add the character to the path
@@ -218,12 +213,13 @@ namespace Mirror
                 FaceDirection(new Vector2(next_Space.transform.position.x, next_Space.transform.position.z));
             }
             transform.position = Vector3.Lerp(transform.position, next_Space.transform.position, 0.1f);
-            isMoving = true;
+            return true;
         }
 
         //Pass in a new path to be used when moving
-        public void AcquirePath(SyncStackGridSpace _path)
+        public void AcquirePath(Stack<GridSpace> _path)
         {
+            Debug.Log("PATH ACQUIRED");
             next_Space = _path.Pop();
             next_Space.AddCombatCharacter(this);
             path = _path;
@@ -243,8 +239,7 @@ namespace Mirror
 
         //Reset this character's path and make sure other
         //characters know that this character is no longer moving
-        [Command]
-        private void CmdResetPath()
+        private void ResetPath()
         {
             path = null;
             future_Position = Vector2.zero;
@@ -259,7 +254,7 @@ namespace Mirror
             mana = base_Mana;
             manaBar.value = base_Mana;
             transform.localRotation = new Quaternion(0, 0, 0, 0);
-            CmdResetPath();
+            ResetPath();
         }
 
         /*public override bool OnSerialize(NetworkWriter writer, bool initialState)

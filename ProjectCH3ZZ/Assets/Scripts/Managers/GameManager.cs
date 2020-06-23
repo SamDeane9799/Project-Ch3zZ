@@ -114,7 +114,6 @@ namespace Mirror
             previous_Phase = current_Phase;
             current_Phase = GAME_PHASE.CHANGE;
             phase_Timer = 0;
-            
         }
 
 

@@ -100,97 +100,108 @@ namespace Mirror
         //CALLED EVERY FRAME
         public virtual void Update()
         {
-            if (isLocalPlayer)
+            if (!isLocalPlayer)
+                return;
+
+            if (readyToSetup && grid == null) CmdSetUpPlayerGrid();
+            //Check if the player is holding a unit and they clicked
+            if (dragging_Unit)
             {
-                if (readyToSetup && grid == null) CmdSetUpPlayerGrid();
-                //Check if the player is holding a unit
-                if (dragging_Unit)
+                //Put out raycast on Gridpositions
+                LayerMask mask = 1 << 8; //Plane layer
+                ProjectRay(mask);
+                unit_ToMove.transform.position = hit.point;
+                //Check if the unit we're holding is an item or character
+                if (Input.GetMouseButtonDown(0))
                 {
-                    //Put out raycast on Gridpositions
-                    LayerMask mask = 1 << 8; //Plane layer
-                    ProjectRay(mask);
-                    unit_ToMove.transform.position = hit.point;
-                    //Check if we left clicked
-                    if (Input.GetMouseButtonDown(0))
+                    if (!unit_ToMove.GetComponent<Item>())
                     {
-                        //Check if the unit we're holding is an item or character
-                        if (!unit_ToMove.GetComponent<Item>())
+                        //Checks if we're trying to sell a unit by shooting out a graphical raycast at specific ui elements
+                        mask = 1 << 10; //Grid layer
+                        ProjectGraphicalRay();
+                        if (ui_Results.Count != 0 && !unit_ToMove.GetComponent<Item>() && ui_Results[0].gameObject.name == "ShopBackground")
                         {
-                            //Checks if we're trying to sell a unit by shooting out a graphical raycast at specific ui elements
                             Character character = unit_ToMove.GetComponent<Character>();
-                            mask = 1 << 10; //Grid layer
-                            ProjectGraphicalRay();
-                            if (ui_Results.Count != 0 && !unit_ToMove.GetComponent<Item>() && ui_Results[0].gameObject.name == "ShopBackground")
-                            {
-                                SellUnit(character);
-                            }
-                            //If we hit anything with our initial raycast we want to place the unit there
-                            else if (ProjectRay(mask))
-                            {
-                                GridSpace new_Spot = hit.transform.gameObject.GetComponent<GridSpace>();
-                                PlaceUnit(new_Spot, character);
-                            }
-                            //If the raycast hits nothing we want to place the unit in its original position and reset the held unit
-                            else
-                            {
-                                previous_Space.ResetUnitPosition();
-                                ResetHeldUnit();
-                            }
+                            SellUnit(character);
                         }
-                        //If the unit we're holding is an item we go in here
+                        //If we hit anything with our initial raycast we want to place the unit there
+                        else if (ProjectRay(mask))
+                        {
+                            //GridSpace new_Spot = hit.transform.gameObject.GetComponent<GridSpace>();
+                            CmdPlaceUnit(hit.transform.gameObject);
+                        }
+                        //If the raycast hits nothing we want to place the unit in its original position and reset the held unit
                         else
                         {
-                            //Checking if the player clicked on a character
-                            mask = 1 << 9; //Character layer
-                            if (ProjectRay(mask))
-                            {
-                                Character clickedChar = hit.transform.gameObject.GetComponent<Character>();
-                                //Add item to characters list if there is room
-                                PlaceItem(clickedChar);
-                            }
-                            //If we don't click on a unit, place the item back to its original spot
-                            else
-                            {
-                                unit_ToMove.transform.position = previousItemSpot;
-                                ResetHeldUnit();
-                            }
+                            previous_Space.ResetUnitPosition();
+                            ResetHeldUnit();
                         }
                     }
-                }
-
-                //Check when the player clicks on a unit
-                else if (Input.GetMouseButtonDown(0))
-                {
-                    //If player left clicks while nothing is done here we do this
-                    LayerMask unitMask = 1 << 9; //Character layer
-
-                    //Checks if we clicked a character
-                    if (ProjectRay(unitMask))
+                    //If the unit we're holding is an item we go in here
+                    else
                     {
-                        Debug.Log("clicked character");
-                        //Find the space occupied by the character
-                        Character character = hit.transform.gameObject.GetComponent<Character>();
-
-                        Debug.Log(character.GetComponent<NetworkIdentity>().hasAuthority);
-                        if (!character.GetComponent<NetworkIdentity>().hasAuthority) return;
-                        if (character.grid_Position.y == GRID_HEIGHT) previous_Space = bench[(int)character.grid_Position.x];
-                        else previous_Space = grid[(int)character.grid_Position.x, (int)character.grid_Position.y];
-                        unit_ToMove = previous_Space.unit.gameObject;
-
-                        Debug.Log("Dragging unit set to true");
-                        dragging_Unit = true;
-                    }
-                    //Checking if we clicked an item
-                    else if (ProjectRay(1 << 12))
-                    {
-                        unit_ToMove = hit.transform.gameObject;
-                        Debug.Log("Dragging unit set to true");
-                        dragging_Unit = true;
+                        //Checking if the player clicked on a character
+                        mask = 1 << 9; //Character layer
+                        if (ProjectRay(mask))
+                        {
+                            Character clickedChar = hit.transform.gameObject.GetComponent<Character>();
+                            //Add item to characters list if there is room
+                            PlaceItem(clickedChar);
+                        }
+                        //If we don't click on a unit, place the item back to its original spot
+                        else
+                        {
+                            unit_ToMove.transform.position = previousItemSpot;
+                            ResetHeldUnit();
+                        }
                     }
                 }
             }
+
+            if (Input.GetMouseButtonDown(0))
+            {
+                //If player left clicks while nothing is done here we do this
+                LayerMask unitMask = 1 << 9; //Character layer
+
+                //Checks if we clicked a character
+                if (ProjectRay(unitMask))
+                {
+                    //Debug.Log("clicked character");
+                    //Find the space occupied by the character
+                    Character character = hit.transform.gameObject.GetComponent<Character>();
+
+                    //Debug.Log(character.GetComponent<NetworkIdentity>().hasAuthority);
+                    if (!character.GetComponent<NetworkIdentity>().hasAuthority) return;
+
+                    int x = (int)character.grid_Position.x;
+                    int y = (int)character.grid_Position.y;
+                    if (y == GRID_HEIGHT) previous_Space = bench[x];
+                    else previous_Space = grid[x, y];
+                    unit_ToMove = previous_Space.unit.gameObject;
+                    //Debug.Log(x + ", " + y);
+                    CmdSetUnit(x, y);
+
+                    //Debug.Log("Dragging unit set to true");
+                    dragging_Unit = true;
+                }
+                //Checking if we clicked an item
+                else if (ProjectRay(1 << 12))
+                {
+                    unit_ToMove = hit.transform.gameObject;
+                    //Debug.Log("Dragging unit set to true");
+                    dragging_Unit = true;
+                }
+            }
         }
-        
+
+        [Command]
+        protected void CmdSetUnit(int x, int y)
+        {
+            if (y == GRID_HEIGHT) previous_Space = bench[x];
+            else previous_Space = grid[x, y];
+            unit_ToMove = previous_Space.unit.gameObject;
+        }
+
         [ClientRpc]
         protected void RpcCreateBoard()
         {
@@ -321,7 +332,7 @@ namespace Mirror
             {
                 if (bench_Units[i].ID == ID && bench_Units[i].level == level)
                 {
-                    RemoveCharacter(bench_Units[i]);
+                    CmdRemoveCharacter(bench_Units[i]);
                     if (characterLevels[ID, level - 1] == 0)
                     {
                         RpcUpdateCharLevels(0, ID, level - 1);
@@ -338,7 +349,7 @@ namespace Mirror
                 {
                     if (field_Units[i].ID == ID && field_Units[i].level == level)
                     {
-                        RemoveCharacter(field_Units[i]);
+                        CmdRemoveCharacter(field_Units[i]);
                         if (characterLevels[ID, level - 1] == 0)
                         {
                             RpcUpdateCharLevels(0, ID, level);
@@ -373,7 +384,7 @@ namespace Mirror
                     {
                         for (int j = 0; j < toRemove.Count; j++)
                         {
-                            RemoveCharacter(toRemove[j]);
+                            CmdRemoveCharacter(toRemove[j]);
                         }
                         characterLevels[ID, level - 1]--;
                         characterLevels[ID, level]++;
@@ -431,17 +442,18 @@ namespace Mirror
             Character charComponent = go.GetComponent<Character>();
             NetworkServer.Spawn(go, connectionToClient);
             RpcAddUnitToBench(go, benchIndex);
-            bench[benchIndex].GetComponent<GridSpace>().AddCharacter(charComponent);
+            Debug.Log(charComponent);
+            bench[benchIndex].AddCharacter(charComponent);
             bench_Units.Insert(benchIndex, charComponent);
         }
-
+        
         [ClientRpc]
         public void RpcAddUnitToBench(GameObject charToAdd, int benchIndex)
         {
             charToAdd.transform.SetParent(transform);
             charToAdd.transform.rotation = Quaternion.Euler(Vector3.zero);
             Character charComponent = charToAdd.GetComponent<Character>();
-            bench[benchIndex].GetComponent<GridSpace>().AddCharacter(charComponent);
+            bench[benchIndex].AddCharacter(charComponent);
             bench_Units.Insert(benchIndex, charComponent);
         }
 
@@ -450,7 +462,7 @@ namespace Mirror
         {
             //Adding units cost to players gold
             gold += unitToSell.gold_Cost;
-            RemoveCharacter(unitToSell);
+            CmdRemoveCharacter(unitToSell);
             ResetHeldUnit();
         }
 
@@ -478,20 +490,26 @@ namespace Mirror
         //Place a unit on the grid based on the 
         //gridspace being occupied or not, otherwise
         //just reset the unit's position
-        private void PlaceUnit(GridSpace new_Spot, Character character)
+        [Command]
+        protected void CmdPlaceUnit(GameObject grid_Object)
         {
+            GridSpace new_Spot = grid_Object.GetComponent<GridSpace>();
+            Character character = unit_ToMove.GetComponent<Character>();
+            //Debug.Log(unit_ToMove);
+            //Debug.Log(previous_Space);
+            //Debug.Log(grid_Object);
             if (new_Spot.unit == null)
             {
                 new_Spot.AddCharacter(character);
                 previous_Space.RemoveCharacter();
-
+                
                 if (previous_Space.transform.position.z <= benchZPosition && new_Spot.transform.position.z > benchZPosition)
                 {
-                    BenchToField(character);
+                    BenchToField(bench_Units.IndexOf(character));
                 }
                 else if (previous_Space.transform.position.z > benchZPosition && new_Spot.transform.position.z <= benchZPosition)
                 {
-                    FieldToBench(character);
+                    FieldToBench(field_Units.IndexOf(character));
                 }
 
                 ResetHeldUnit();
@@ -503,13 +521,13 @@ namespace Mirror
 
                 if (previous_Space.transform.position.z <= -6.5f && new_Spot.transform.position.z > -6.5f)
                 {
-                    FieldToBench(character);
-                    BenchToField(previous_Unit);
+                    FieldToBench(field_Units.IndexOf(character));
+                    BenchToField(bench_Units.IndexOf(previous_Unit));
                 }
                 else if (previous_Space.transform.position.z > -6.5f && new_Spot.transform.position.z <= -6.5f)
                 {
-                    BenchToField(character);
-                    FieldToBench(previous_Unit);
+                    BenchToField(bench_Units.IndexOf(character));
+                    FieldToBench(field_Units.IndexOf(previous_Unit));
                 }
 
                 new_Spot.AddCharacter(previous_Unit);
@@ -534,12 +552,13 @@ namespace Mirror
         }
 
         //Remove a character currently being tracked by the player
-        private void RemoveCharacter(Character character)
+        [Command]
+        protected void CmdRemoveCharacter(Character character)
         {
             if (character.grid_Position.y < 4)
             {
                 grid[(int)character.grid_Position.x, (int)character.grid_Position.y].RemoveCharacter();
-                FieldToBench(character);
+                FieldToBench(field_Units.IndexOf(character));
             }
             else
             {
@@ -554,8 +573,9 @@ namespace Mirror
         //When a unit is moved, evaluate the buffs on the current board and
         //change what the player has accordingly
         //ENSURE THAT YOU UPDATE THE GRID POSITION THIS CHARACTER IS CURRENTLY ON
-        protected virtual void BenchToField(Character unit)
+        protected virtual void BenchToField(int u_Index)
         {
+            Character unit = bench_Units[u_Index];
             bench_Units.Remove(unit);
             field_Units.Add(unit);
 
@@ -579,8 +599,9 @@ namespace Mirror
         //adding it to the appropriate data structure
         //and updating the synergies
         //ENSURE THAT YOU UPDATE THE GRID POSITION THIS CHARACTER IS CURRENTLY ON
-        protected virtual void FieldToBench(Character unit)
+        protected virtual void FieldToBench(int u_Index)
         {
+            Character unit = field_Units[u_Index];
             field_Units.Remove(unit);
             bench_Units.Add(unit);
 
