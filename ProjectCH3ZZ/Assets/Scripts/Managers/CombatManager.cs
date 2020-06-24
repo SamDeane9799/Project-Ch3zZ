@@ -50,7 +50,6 @@ namespace Mirror
         //Simulate combat between two players by determining the next action of their units
         private void SimulateCombat(SyncListCharacter fielded_Units, SyncListCharacter enemy_Units)
         {
-            Debug.Log("IM ZOE");
             //Loop through the first player's units and determine what they should do 
             foreach (Character c in fielded_Units)
             {

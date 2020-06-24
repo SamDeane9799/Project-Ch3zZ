@@ -158,7 +158,7 @@ namespace Mirror
                 }
             }
 
-            if (Input.GetMouseButtonDown(0))
+            else if (Input.GetMouseButtonDown(0))
             {
                 //If player left clicks while nothing is done here we do this
                 LayerMask unitMask = 1 << 9; //Character layer
@@ -409,7 +409,7 @@ namespace Mirror
                 return true;
             }
             //Check to see if an upgrade can be made during combat
-            else if (characterLevels[charToSpawn.unitID, 0] >= 3 && bench_Units.Count > 0)
+            else if (characterLevels[charToSpawn.unitID, 0] >= 3 && bench_Units.Count > 1)
             {
                CmdUpgradeUnitInCombat(charToSpawn.unitID, 1);
                 if (characterLevels[charToSpawn.unitID, 1] >= 3) CmdUpgradeUnitInCombat(charToSpawn.unitID, 2);
@@ -439,12 +439,13 @@ namespace Mirror
             GameObject go = Instantiate(characterPrefabs[unitID - 1]);
             go.transform.SetParent(transform);
             go.transform.rotation = Quaternion.Euler(Vector3.zero);
+
             Character charComponent = go.GetComponent<Character>();
             NetworkServer.Spawn(go, connectionToClient);
-            RpcAddUnitToBench(go, benchIndex);
-            Debug.Log(charComponent);
+
             bench[benchIndex].AddCharacter(charComponent);
             bench_Units.Insert(benchIndex, charComponent);
+            RpcAddUnitToBench(go, benchIndex);
         }
         
         [ClientRpc]
@@ -495,14 +496,67 @@ namespace Mirror
         {
             GridSpace new_Spot = grid_Object.GetComponent<GridSpace>();
             Character character = unit_ToMove.GetComponent<Character>();
-            //Debug.Log(unit_ToMove);
-            //Debug.Log(previous_Space);
-            //Debug.Log(grid_Object);
+
             if (new_Spot.unit == null)
             {
                 new_Spot.AddCharacter(character);
                 previous_Space.RemoveCharacter();
                 
+                if (previous_Space.transform.position.z <= benchZPosition && new_Spot.transform.position.z > benchZPosition)
+                {
+                    BenchToField(bench_Units.IndexOf(character));
+                }
+                else if (previous_Space.transform.position.z > benchZPosition && new_Spot.transform.position.z <= benchZPosition)
+                {
+                    FieldToBench(field_Units.IndexOf(character));
+                }
+
+                RpcPlaceUnit(grid_Object, unit_ToMove);
+                ResetHeldUnit();
+            }
+            else if (new_Spot != previous_Space)
+            {
+                Character previous_Unit = character;
+                character = new_Spot.unit;
+
+                if (previous_Space.transform.position.z <= -6.5f && new_Spot.transform.position.z > -6.5f)
+                {
+                    FieldToBench(field_Units.IndexOf(character));
+                    BenchToField(bench_Units.IndexOf(previous_Unit));
+                }
+                else if (previous_Space.transform.position.z > -6.5f && new_Spot.transform.position.z <= -6.5f)
+                {
+                    BenchToField(bench_Units.IndexOf(character));
+                    FieldToBench(field_Units.IndexOf(previous_Unit));
+                }
+
+                new_Spot.AddCharacter(previous_Unit);
+                previous_Space.AddCharacter(character);
+
+                RpcPlaceUnit(grid_Object, unit_ToMove);
+                ResetHeldUnit();
+            }
+            else
+            {
+                previous_Space.ResetUnitPosition();
+                RpcPlaceUnit(grid_Object, unit_ToMove);
+                ResetHeldUnit();
+            }
+        }
+
+        [ClientRpc]
+        protected void RpcPlaceUnit(GameObject grid_Object, GameObject unit)
+        {
+            if (!isLocalPlayer) return;
+
+            GridSpace new_Spot = grid_Object.GetComponent<GridSpace>();
+            Character character = unit.GetComponent<Character>();
+            Debug.Log("Local Player");
+            if (new_Spot.unit == null)
+            {
+                new_Spot.AddCharacter(character);
+                previous_Space.RemoveCharacter();
+
                 if (previous_Space.transform.position.z <= benchZPosition && new_Spot.transform.position.z > benchZPosition)
                 {
                     BenchToField(bench_Units.IndexOf(character));
