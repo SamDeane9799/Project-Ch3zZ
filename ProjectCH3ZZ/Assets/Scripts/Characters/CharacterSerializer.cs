@@ -33,7 +33,7 @@ namespace Mirror
         }
     }
 
-    public static class GridSpaceSerializer
+    /*public static class GridSpaceSerializer
     {
         public static void WriteGridSpace(this NetworkWriter writer, GridSpace gridSpace)
         {
@@ -45,5 +45,5 @@ namespace Mirror
         {
             return Resources.Load<GridSpace>(reader.ReadString());
         }
-    }
+    }*/
 }

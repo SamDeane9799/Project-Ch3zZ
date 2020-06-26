@@ -50,7 +50,7 @@ namespace Mirror
         // Update is called once per frame
         void Update()
         {
-            if (players.Count < 2)
+          /*  if (players.Count < 2)
                 return;
 
             //Check the current phase of the game
@@ -65,7 +65,7 @@ namespace Mirror
                 case GAME_PHASE.COMBAT: //Combat phase
                     foreach (CombatManager c in combat)
                     {
-                        c.Update();
+                        //c.Update();
                     }
                     if (phase_Timer >= COMBAT_TIME)
                     {
@@ -103,7 +103,7 @@ namespace Mirror
                     }
                     break;
             }
-            phase_Timer += Time.deltaTime;
+            phase_Timer += Time.deltaTime;*/
         }
 
         //Change the phase of the game

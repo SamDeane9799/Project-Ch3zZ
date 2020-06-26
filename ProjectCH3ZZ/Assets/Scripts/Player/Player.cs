@@ -68,6 +68,8 @@ namespace Mirror
         protected List<RaycastResult> ui_Results;
         protected EventSystem m_Eventsystem;
 
+        private GridSpace recentSpace;
+
 
         // Start is called before the first frame update
         public virtual void Start()
@@ -127,7 +129,6 @@ namespace Mirror
                         //If we hit anything with our initial raycast we want to place the unit there
                         else if (ProjectRay(mask))
                         {
-                            //GridSpace new_Spot = hit.transform.gameObject.GetComponent<GridSpace>();
                             CmdPlaceUnit(hit.transform.gameObject);
                         }
                         //If the raycast hits nothing we want to place the unit in its original position and reset the held unit
@@ -166,29 +167,25 @@ namespace Mirror
                 //Checks if we clicked a character
                 if (ProjectRay(unitMask))
                 {
-                    //Debug.Log("clicked character");
                     //Find the space occupied by the character
                     Character character = hit.transform.gameObject.GetComponent<Character>();
 
-                    //Debug.Log(character.GetComponent<NetworkIdentity>().hasAuthority);
                     if (!character.GetComponent<NetworkIdentity>().hasAuthority) return;
-
+                    if(recentSpace != null) Debug.Log(recentSpace.grid_Position);
                     int x = (int)character.grid_Position.x;
                     int y = (int)character.grid_Position.y;
                     if (y == GRID_HEIGHT) previous_Space = bench[x];
                     else previous_Space = grid[x, y];
                     unit_ToMove = previous_Space.unit.gameObject;
-                    //Debug.Log(x + ", " + y);
+                    
                     CmdSetUnit(x, y);
 
-                    //Debug.Log("Dragging unit set to true");
                     dragging_Unit = true;
                 }
                 //Checking if we clicked an item
                 else if (ProjectRay(1 << 12))
                 {
                     unit_ToMove = hit.transform.gameObject;
-                    //Debug.Log("Dragging unit set to true");
                     dragging_Unit = true;
                 }
             }
@@ -335,7 +332,7 @@ namespace Mirror
                     CmdRemoveCharacter(bench_Units[i]);
                     if (characterLevels[ID, level - 1] == 0)
                     {
-                        RpcUpdateCharLevels(0, ID, level - 1);
+                        TargetUpdateCharLevels(0, ID, level - 1);
                         return;
                     }
                 }
@@ -352,7 +349,7 @@ namespace Mirror
                         CmdRemoveCharacter(field_Units[i]);
                         if (characterLevels[ID, level - 1] == 0)
                         {
-                            RpcUpdateCharLevels(0, ID, level);
+                            TargetUpdateCharLevels(0, ID, level);
                             return;
                         }
                     }
@@ -427,8 +424,8 @@ namespace Mirror
             return false;
         }
 
-        [ClientRpc]
-        private void RpcUpdateCharLevels(short amount, short ID, int level)
+        [TargetRpc]
+        private void TargetUpdateCharLevels(short amount, short ID, int level)
         {
             characterLevels[ID, level] = amount;
         }
@@ -453,6 +450,7 @@ namespace Mirror
         {
             charToAdd.transform.SetParent(transform);
             charToAdd.transform.rotation = Quaternion.Euler(Vector3.zero);
+            if (!isLocalPlayer) return;
             Character charComponent = charToAdd.GetComponent<Character>();
             bench[benchIndex].AddCharacter(charComponent);
             bench_Units.Insert(benchIndex, charComponent);
@@ -511,7 +509,7 @@ namespace Mirror
                     FieldToBench(field_Units.IndexOf(character));
                 }
 
-                RpcPlaceUnit(grid_Object, unit_ToMove);
+                TargetPlaceUnit(grid_Object);
                 ResetHeldUnit();
             }
             else if (new_Spot != previous_Space)
@@ -533,29 +531,29 @@ namespace Mirror
                 new_Spot.AddCharacter(previous_Unit);
                 previous_Space.AddCharacter(character);
 
-                RpcPlaceUnit(grid_Object, unit_ToMove);
+                TargetPlaceUnit(grid_Object);
                 ResetHeldUnit();
             }
             else
             {
                 previous_Space.ResetUnitPosition();
-                RpcPlaceUnit(grid_Object, unit_ToMove);
+                TargetPlaceUnit(grid_Object);
                 ResetHeldUnit();
             }
         }
 
-        [ClientRpc]
-        protected void RpcPlaceUnit(GameObject grid_Object, GameObject unit)
+        [TargetRpc]
+        protected void TargetPlaceUnit(GameObject grid_Object)
         {
-            if (!isLocalPlayer) return;
-
             GridSpace new_Spot = grid_Object.GetComponent<GridSpace>();
-            Character character = unit.GetComponent<Character>();
-            Debug.Log("Local Player");
+            Character character = unit_ToMove.GetComponent<Character>();
             if (new_Spot.unit == null)
             {
+                //Debug.Log("New_Spot Grid Position " + new_Spot.grid_Position);
+                //Debug.Log("Previous_Space Grid Position " + previous_Space.grid_Position);
                 new_Spot.AddCharacter(character);
                 previous_Space.RemoveCharacter();
+                recentSpace = new_Spot;
 
                 if (previous_Space.transform.position.z <= benchZPosition && new_Spot.transform.position.z > benchZPosition)
                 {
@@ -565,7 +563,6 @@ namespace Mirror
                 {
                     FieldToBench(field_Units.IndexOf(character));
                 }
-
                 ResetHeldUnit();
             }
             else if (new_Spot != previous_Space)

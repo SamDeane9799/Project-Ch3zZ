@@ -4,7 +4,6 @@ using UnityEngine;
 
 namespace Mirror
 {
-    [System.Serializable]
     public class GridSpace : NetworkBehaviour
     {
         // --- GRID DATA ---
@@ -20,6 +19,11 @@ namespace Mirror
         public float f;
         public float h;
 
+
+        public void Update()
+        {
+            if (unit != null) Debug.Log(grid_Position);
+        }
         //Set the position of the space, to be used when updating grid space for combat
         //and whatnot
         public void SetGridPosition(Vector2 pos)
@@ -67,7 +71,7 @@ namespace Mirror
             f = int.MaxValue;
         }
 
-        public override bool OnSerialize(NetworkWriter writer, bool initialState)
+       /* public override bool OnSerialize(NetworkWriter writer, bool initialState)
         {
             base.OnSerialize(writer, initialState);
             if (initialState)
@@ -131,9 +135,9 @@ namespace Mirror
             {
                 this.grid_Position = reader.ReadVector2();
             }
-        }
+        }*/
     }
-
+/*
     [System.Serializable]
     public class SyncStackGridSpace : SyncList<GridSpace>
     {        
@@ -157,6 +161,6 @@ namespace Mirror
     [System.Serializable]
     public class SyncGridList: SyncList<GridSpace>
     {      
-    }
+    }*/
 
 }
